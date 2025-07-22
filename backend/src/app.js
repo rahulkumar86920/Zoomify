@@ -22,6 +22,7 @@ const start = async () => {
   const connectionDb = await mongoose.connect(
     "mongodb+srv://rahulkumar:Rahul150%40@cluster0.ghbafb3.mongodb.net/zoomify"
   );
+  
 
   console.log(`Connected to DB: ${mongoose.connection.name}`);
 
