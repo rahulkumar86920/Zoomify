@@ -156,6 +156,9 @@ html, body {
     font-size: 1.5rem;
     padding-bottom: 10px;
   }
+  .landingMainContainer > div:nth-child(1) h1 span {
+    border-color: black;
+  }
 
   .landingMainContainer > div:nth-child(1) p {
     font-size: 1.2rem;
@@ -180,7 +183,7 @@ html, body {
 }
 @media (max-width: 768px) {
   .landingPageContainer {
-    background-image: url("/public/mobile-bg.jpg"); 
+    background-image: url("/public/mobile-bg3.jpg"); 
     background-size: cover;
     background-position: center;
   }

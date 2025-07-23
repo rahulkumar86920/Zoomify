@@ -2,43 +2,54 @@
     position: relative;
     height: 100vh;
     background: rgb(1, 4, 48);
+    overflow: hidden;
 }
 
+/* Your own video at corner */
 .meetUserVideo {
     position: absolute;
-    bottom: 10vh;
+    bottom: 12vh;
+    left: 10px;
     height: 20vh;
     width: auto;
-    left: 0;
-    border-radius: 20px;
+    border-radius: 12px;
+    z-index: 2;
 }
 
+/* Buttons row at bottom */
 .buttonContainers {
     position: absolute;
     width: 100vw;
-    bottom: 0;
+    bottom: 10px;
     text-align: center;
+    z-index: 3;
 }
 
 .buttonContainers svg {
-    font-size: 3rem;
+    font-size: 2.5rem;
+    color: white;
+    margin: 0 10px;
 }
 
-.conferenceView { 
-
+/* All videos including remote */
+.conferenceView {
     display: flex;
-    
+    flex-wrap: wrap;
+    justify-content: center;
     padding: 10px;
-    gap: 10px;
+    gap: 12px;
+    margin-top: 10px;
 }
 
-.conferenceView  video {
-    width: 40vw;
-    height: 20vh;
-    min-width: 30vw;
+.conferenceView video {
+    width: 100%;
+    max-width: 360px;
+    height: auto;
     border-radius: 10px;
+    object-fit: cover;
 }
 
+/* Chat box */
 .chatRoom {
     position: absolute;
     height: 90vh;
@@ -47,6 +58,7 @@
     border-radius: 10px;
     width: 30vw;
     padding-inline: 20px;
+    z-index: 4;
 }
 
 .chatContainer {
@@ -54,8 +66,40 @@
     height: 100%;
 }
 
-
 .chattingArea {
     position: absolute;
     bottom: 0;
+    width: 100%;
+}
+
+/* ===== Responsive for Mobile ===== */
+@media screen and (max-width: 768px) {
+    .conferenceView {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .conferenceView video {
+        width: 90vw;
+        height: auto;
+    }
+
+    .meetUserVideo {
+        width: 100px;
+        height: auto;
+        bottom: 100px;
+        left: 10px;
+    }
+
+    .buttonContainers {
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 10px 0;
+    }
+
+    .chatRoom {
+        width: 90vw;
+        height: 80vh;
+        bottom: 10vh;
+    }
 }
