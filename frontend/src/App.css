@@ -1,3 +1,11 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;              /* Disable scrolling completely */
+  overscroll-behavior: none;     /* Prevent scroll bounce on mobile */
+}
+
 .landingPageContainer {
   width: 100vw;
   height: 100vh;
@@ -105,4 +113,75 @@
   width: 30vw;
   height: auto;
   border-radius: 20px;
+}
+
+/* Responsive Design for Mobile Screens */
+@media (max-width: 768px) {
+   .landingPageContainer nav {
+    flex-direction: column;
+    align-items: center; /* center children horizontally */
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .landingPageContainer nav h2 {
+    font-size: 1.4rem;
+    margin-left: 0;
+    text-align: center;
+  }
+
+  .landingPageContainer nav .navlist {
+    flex-direction: column;
+    align-items: center; /* center nav items */
+    gap: 0.6rem;
+    text-align: center;
+  }
+
+  .landingMainContainer {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding-inline: 1rem;
+    text-align: center;
+    gap: 2rem;
+  }
+
+  .landingMainContainer > div:nth-child(1) {
+    font-size: 1.2rem;
+    margin: 0;
+  }
+
+  .landingMainContainer > div:nth-child(1) h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    padding-bottom: 10px;
+  }
+
+  .landingMainContainer > div:nth-child(1) p {
+    font-size: 1.2rem;
+    margin: 0;
+  }
+
+  .landingMainContainer > div:nth-child(1) div[role='button'] {
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 1rem;
+  }
+
+  .landingMainContainer > div:nth-child(1) div[role='button'] a {
+    font-size: 1.2rem;
+  }
+
+  .landingMainContainer > div:nth-child(2) img {
+    height: auto;
+    width: 80vw;
+    max-height: 40vh;
+  }
+}
+@media (max-width: 768px) {
+  .landingPageContainer {
+    background-image: url("/public/mobile-bg.jpg"); 
+    background-size: cover;
+    background-position: center;
+  }
 }
