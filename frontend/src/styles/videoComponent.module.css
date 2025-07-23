@@ -103,9 +103,20 @@
         padding: 10px 0;
     }
 
-    .chatRoom {
-        width: 90vw;
-        height: 80vh;
-        bottom: 10vh;
-    }
+     .chatRoom {
+    position: fixed;
+    bottom: 20vh; /* leaves space for buttons */
+    right: 0;
+    width: 100vw;
+    height: 60vh;
+    background: white;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    z-index: 1000;
+    overflow-y: auto;
+  }
+
+  .buttonContainers {
+    z-index: 1100; /* Ensure buttons are always on top */
+  }
 }
