@@ -181,6 +181,7 @@ html, body {
     max-height: 40vh;
   }
 }
+/* this is for the mobile background image  */
 @media (max-width: 768px) {
   .landingPageContainer {
     background-image: url("/public/mobile-bg3.jpg"); 
@@ -188,3 +189,5 @@ html, body {
     background-position: center;
   }
 }
+
+

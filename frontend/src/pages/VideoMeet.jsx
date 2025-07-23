@@ -466,9 +466,10 @@ export default function VideoMeetComponent() {
     window.location.href = "/";
   };
 
+  //this is for to open and close the chat screem
   const openChat = () => {
-    setModal(true);
-    setNewMessages(0);
+    setModal((prev) => !prev); // toggle the modal
+    if (newMessages > 0) setNewMessages(0);
   };
 
   const closeChat = () => {
