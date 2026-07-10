@@ -100,6 +100,12 @@ export default function VideoMeetComponent() {
       setAudioAvailable(false);
       alert("Failed to access camera or microphone. Please check permissions.");
     }
+
+    // Auto-connect if user is already logged in (skips Join As lobby)
+    if (localStorage.getItem("token")) {
+      setAskForUsername(false);
+      connectToSocketServer();
+    }
   };
 
   useEffect(() => {
