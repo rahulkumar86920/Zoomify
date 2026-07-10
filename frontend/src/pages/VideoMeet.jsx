@@ -281,8 +281,7 @@ export default function VideoMeetComponent() {
       }
     };
 
-    connections[fromId].onaddstream = (event) => {
-      console.log(`[WebRTC] Stream added from ${fromId}`);
+    const handleIncomingStream = (stream) => {
       const videoExists = videoRef.current.find(
         (video) => video.socketId === fromId
       );
@@ -291,14 +290,14 @@ export default function VideoMeetComponent() {
         setVideos((videos) =>
           videos.map((video) =>
             video.socketId === fromId
-              ? { ...video, stream: event.stream }
+              ? { ...video, stream: stream }
               : video
           )
         );
       } else {
         const newVideo = {
           socketId: fromId,
-          stream: event.stream,
+          stream: stream,
           autoplay: true,
           playsinline: true,
         };
@@ -310,11 +309,51 @@ export default function VideoMeetComponent() {
       }
     };
 
+    // Modern track handling
+    connections[fromId].ontrack = (event) => {
+      console.log(`[WebRTC] Track added from ${fromId}`);
+      if (event.streams && event.streams[0]) {
+        handleIncomingStream(event.streams[0]);
+      }
+    };
+
+    // Legacy stream handling fallback
+    connections[fromId].onaddstream = (event) => {
+      console.log(`[WebRTC] Stream added from ${fromId} (legacy)`);
+      if (event.stream) {
+        handleIncomingStream(event.stream);
+      }
+    };
+
+    // Add local tracks/streams
     if (window.localStream) {
-      connections[fromId].addStream(window.localStream);
+      try {
+        window.localStream.getTracks().forEach((track) => {
+          connections[fromId].addTrack(track, window.localStream);
+        });
+        console.log(`[WebRTC] Added tracks to connection for ${fromId}`);
+      } catch (e) {
+        try {
+          connections[fromId].addStream(window.localStream);
+          console.log(`[WebRTC] Added stream (legacy fallback) to connection for ${fromId}`);
+        } catch (err) {
+          console.error("Error adding local media to connection:", err);
+        }
+      }
     } else {
-      window.localStream = new MediaStream([black(), silence()]);
-      connections[fromId].addStream(window.localStream);
+      const blankStream = new MediaStream([black(), silence()]);
+      window.localStream = blankStream;
+      try {
+        blankStream.getTracks().forEach((track) => {
+          connections[fromId].addTrack(track, blankStream);
+        });
+      } catch (e) {
+        try {
+          connections[fromId].addStream(blankStream);
+        } catch (err) {
+          console.error("Error adding blank media to connection:", err);
+        }
+      }
     }
   };
 
