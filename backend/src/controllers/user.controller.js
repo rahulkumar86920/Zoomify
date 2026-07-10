@@ -28,7 +28,7 @@ const login = async (req, res) => {
 
       user.token = token;
       await user.save();
-      return res.status(httpStatus.OK).json({ token: token, name: user.name, username: user.username });
+      return res.status(httpStatus.OK).json({ token: token, name: user.name, username: user.username, uniqueId: user.uniqueId });
     } else {
       return res
         .status(httpStatus.UNAUTHORIZED)
@@ -97,4 +97,42 @@ const addToHistory = async (req, res) => {
   }
 };
 
-export { login, register, getUserHistory, addToHistory };
+const searchUsers = async (req, res) => {
+  const { q } = req.query;
+  const token = req.headers.token || req.query.token;
+
+  if (!token) {
+    return res.status(httpStatus.UNAUTHORIZED).json({ message: "No token provided" });
+  }
+
+  try {
+    const currentUser = await User.findOne({ token });
+    if (!currentUser) {
+      return res.status(httpStatus.NOT_FOUND).json({ message: "User not found" });
+    }
+
+    if (!q || !q.trim()) {
+      return res.json([]);
+    }
+
+    // Search by uniqueId, name, or username. Exclude self.
+    const users = await User.find({
+      $and: [
+        { _id: { $ne: currentUser._id } },
+        {
+          $or: [
+            { uniqueId: { $regex: q, $options: "i" } },
+            { name: { $regex: q, $options: "i" } },
+            { username: { $regex: q, $options: "i" } },
+          ],
+        },
+      ],
+    }).select("name username uniqueId");
+
+    res.json(users);
+  } catch (e) {
+    res.status(500).json({ message: `Error searching users: ${e.message}` });
+  }
+};
+
+export { login, register, getUserHistory, addToHistory, searchUsers };

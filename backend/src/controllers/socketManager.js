@@ -1,4 +1,7 @@
 import { Server } from "socket.io"
+import { User } from "../models/user.model.js"
+import { Conversation } from "../models/conversation.model.js"
+import { Message } from "../models/message.model.js"
 
 let connections = {}
 let messages = {}
@@ -80,6 +83,81 @@ export const connectToSocket = (server) => {
                     io.to(elem).emit("chat-message", data, sender, socket.id)
                 })
             }
+        })
+
+        // ── Direct Messaging events ──────────────────────────────
+        socket.on("join-dm-lobby", (username) => {
+            socket.join(username);
+            console.log(`[Socket] User ${username} joined their DM lobby`);
+        })
+
+        socket.on("send-dm", async (payload) => {
+            const { senderUsername, recipientUsername, text, conversationId } = payload;
+            try {
+                const senderUser = await User.findOne({ username: senderUsername });
+                const recipientUser = await User.findOne({ username: recipientUsername });
+
+                if (senderUser && recipientUser) {
+                    // Create new message in database
+                    const msg = new Message({
+                        conversationId,
+                        sender: senderUser._id,
+                        text,
+                    });
+                    await msg.save();
+
+                    // Update last message in Conversation
+                    await Conversation.findByIdAndUpdate(conversationId, {
+                        lastMessage: text,
+                        lastMessageAt: new Date(),
+                    });
+
+                    const populatedMsg = {
+                        _id: msg._id,
+                        conversationId,
+                        text,
+                        createdAt: msg.createdAt,
+                        sender: {
+                            _id: senderUser._id,
+                            name: senderUser.name,
+                            username: senderUser.username,
+                            uniqueId: senderUser.uniqueId,
+                        }
+                    };
+
+                    // Broadcast to both participants
+                    io.to(senderUsername).to(recipientUsername).emit("dm-receive", populatedMsg);
+                }
+            } catch (e) {
+                console.error("Error sending DM over socket:", e);
+            }
+        })
+
+        socket.on("typing-dm", (payload) => {
+            const { senderUsername, recipientUsername, isTyping } = payload;
+            io.to(recipientUsername).emit("dm-typing-receive", { senderUsername, isTyping });
+        })
+
+        // ── WhatsApp-style Call Invitations ─────────────────────
+        socket.on("call-invite", (payload) => {
+            const { senderName, senderUsername, recipientUsername, meetingCode, isVideo } = payload;
+            console.log(`[Socket] Call invitation from ${senderUsername} to ${recipientUsername}`);
+            io.to(recipientUsername).emit("call-invite-receive", {
+                senderName,
+                senderUsername,
+                meetingCode,
+                isVideo
+            });
+        })
+
+        socket.on("call-accept", (payload) => {
+            const { recipientUsername, senderUsername, meetingCode } = payload;
+            io.to(senderUsername).emit("call-accept-receive", { recipientUsername, meetingCode });
+        })
+
+        socket.on("call-reject", (payload) => {
+            const { recipientUsername, senderUsername } = payload;
+            io.to(senderUsername).emit("call-reject-receive", { recipientUsername });
         })
 
         socket.on("disconnect", () => {

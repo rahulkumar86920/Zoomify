@@ -52,8 +52,56 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("token", request.data.token);
         if (request.data.name) localStorage.setItem("name", request.data.name);
         if (request.data.username) localStorage.setItem("username", request.data.username);
+        if (request.data.uniqueId) localStorage.setItem("uniqueId", request.data.uniqueId);
         router("/home");
       }
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const searchUsers = async (query) => {
+    try {
+      let request = await client.get("/search", {
+        params: { q: query },
+        headers: { token: localStorage.getItem("token") },
+      });
+      return request.data;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const getConversations = async () => {
+    try {
+      let request = await axios.get(`${server}/api/v1/chat/conversations`, {
+        headers: { token: localStorage.getItem("token") },
+      });
+      return request.data;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const getMessages = async (conversationId) => {
+    try {
+      let request = await axios.get(`${server}/api/v1/chat/messages/${conversationId}`, {
+        headers: { token: localStorage.getItem("token") },
+      });
+      return request.data;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const createOrGetConversation = async (recipientUniqueId) => {
+    try {
+      let request = await axios.post(`${server}/api/v1/chat/conversations`, {
+        recipientUniqueId,
+      }, {
+        headers: { token: localStorage.getItem("token") },
+      });
+      return request.data;
     } catch (err) {
       throw err;
     }
@@ -91,6 +139,10 @@ export const AuthProvider = ({ children }) => {
     getHistoryOfUser,
     handleRegister,
     handleLogin,
+    searchUsers,
+    getConversations,
+    getMessages,
+    createOrGetConversation,
   };
 
   return <AuthContext.Provider value={data}>{children}</AuthContext.Provider>;
