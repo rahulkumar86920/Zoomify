@@ -261,6 +261,14 @@ export default function VideoMeetComponent() {
   const createPeerConnection = (fromId) => {
     connections[fromId] = new RTCPeerConnection(peerConfigConnections);
 
+    connections[fromId].onconnectionstatechange = () => {
+      console.log(`[WebRTC] Connection state for ${fromId}:`, connections[fromId].connectionState);
+    };
+
+    connections[fromId].oniceconnectionstatechange = () => {
+      console.log(`[WebRTC] ICE state for ${fromId}:`, connections[fromId].iceConnectionState);
+    };
+
     connections[fromId].onicecandidate = (event) => {
       if (event.candidate) {
         socketRef.current.emit(
@@ -272,6 +280,7 @@ export default function VideoMeetComponent() {
     };
 
     connections[fromId].onaddstream = (event) => {
+      console.log(`[WebRTC] Stream added from ${fromId}`);
       const videoExists = videoRef.current.find(
         (video) => video.socketId === fromId
       );
