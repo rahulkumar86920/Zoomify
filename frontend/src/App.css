@@ -307,130 +307,247 @@
 /* ========================================================
    HOME — MEET CONTAINER
    ======================================================== */
+.dashboardWrapper {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg-deep);
+  display: flex;
+  flex-direction: column;
+}
+
+/* User avatar initial badge */
+.userAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #9c6ef0);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  box-shadow: 0 0 12px var(--accent-glow);
+  margin-inline: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 .meetContainer {
-  min-height: calc(100vh - 60px);
-  min-height: calc(100dvh - 60px);
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1.25rem;
-  gap: 2.5rem;
-  position: relative;
-}
-
-/* Background orb */
-.meetContainer::before {
-  content: '';
-  position: fixed;
-  top: 20%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80vw;
-  height: 80vw;
-  max-width: 600px;
-  background: radial-gradient(circle, rgba(124,110,240,0.1) 0%, transparent 65%);
-  pointer-events: none;
-  z-index: 0;
+  padding: 2.5rem 1.25rem;
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .leftPanel {
-  position: relative;
-  z-index: 5;
   width: 100%;
-  max-width: 480px;
+  max-width: 600px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 0;
+  gap: 1.5rem;
+  text-align: left;
 }
 
-.leftPanel h2 {
+.welcomeHeader h2 {
   font-family: 'Space Grotesk', sans-serif;
-  font-size: clamp(1.5rem, 6vw, 2.2rem);
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
   font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.5px;
-  margin-bottom: 0.65rem;
   color: var(--text-primary);
+  letter-spacing: -0.5px;
+  line-height: 1.25;
 }
 
-.leftPanel > p {
-  font-size: 0.9rem;
+.welcomeHeader p {
   color: var(--text-secondary);
-  margin-bottom: 1.8rem;
+  font-size: 0.95rem;
+  margin-top: 0.25rem;
 }
 
-.joinCard {
+/* Quick Actions Cards */
+.dashboardActionsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
   width: 100%;
+}
+
+.actionCard {
   background: var(--glass);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   padding: 1.5rem;
-  box-shadow: 0 8px 48px rgba(0,0,0,0.4), 0 0 0 1px var(--glass-border) inset;
-}
-
-.joinInputRow {
   display: flex;
-  gap: 0.6rem;
+  gap: 1.25rem;
+  cursor: pointer;
+  transition: transform var(--fast) var(--ease), border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.actionCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 12px 32px rgba(124, 110, 240, 0.12);
+}
+
+/* Start Instant Meeting Tile has custom colored background */
+.actionCard.instantMeeting {
+  background: linear-gradient(135deg, rgba(124, 110, 240, 0.15), rgba(124, 110, 240, 0.03));
+  border-color: rgba(124, 110, 240, 0.35);
+}
+.actionCard.instantMeeting:hover {
+  border-color: var(--accent);
+  box-shadow: 0 12px 32px var(--accent-glow);
+}
+
+.cardIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: white;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 8px 24px var(--accent-glow);
 }
 
-/* Override MUI TextField for dark theme */
-.joinCard .MuiOutlinedInput-root {
-  background: rgba(255,255,255,0.04) !important;
-  border-radius: var(--radius-sm) !important;
-  color: var(--text-primary) !important;
-}
-.joinCard .MuiOutlinedInput-notchedOutline {
-  border-color: var(--glass-border) !important;
-}
-.joinCard .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
-  border-color: var(--accent) !important;
-}
-.joinCard .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px var(--accent-glow) !important;
-}
-.joinCard .MuiInputLabel-root { color: var(--text-muted) !important; }
-.joinCard .MuiInputLabel-root.Mui-focused { color: var(--accent-light) !important; }
-.joinCard input { color: var(--text-primary) !important; font-size: 0.95rem !important; }
-
-.joinBtn {
-  background: linear-gradient(135deg, var(--accent), #9c6ef0) !important;
-  color: #fff !important;
-  border-radius: var(--radius-sm) !important;
-  padding: 0.85rem 1.4rem !important;
-  font-weight: 700 !important;
-  font-size: 0.9rem !important;
-  text-transform: none !important;
-  white-space: nowrap !important;
-  box-shadow: 0 4px 24px var(--accent-glow) !important;
-  transition: transform var(--fast) var(--ease), box-shadow var(--mid) !important;
-  min-width: 80px !important;
-}
-.joinBtn:hover {
-  transform: translateY(-1px) !important;
-  box-shadow: 0 6px 32px var(--accent-glow) !important;
+.cardIcon.secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--accent-light);
+  box-shadow: none;
 }
 
+.cardText h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cardText p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.15rem;
+}
+
+/* Dashboard inputs inside join meeting card */
+.dashboardJoinRow {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  align-items: center;
+  max-width: 320px;
+  width: 100%;
+}
+
+.dashboardJoinRow input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1.5px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+}
+
+.dashboardJoinRow input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.dashboardJoinRow button {
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  padding: 0.68rem 1.25rem;
+  color: white;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: transform var(--fast) var(--ease), background var(--fast);
+}
+
+.dashboardJoinRow button:hover {
+  background: var(--accent-light);
+}
+
+.dashboardJoinRow button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Live clock widget */
 .rightPanel {
-  position: relative;
-  z-index: 5;
+  width: 100%;
+  max-width: 380px;
   display: flex;
   justify-content: center;
 }
 
-.rightPanel img {
-  width: min(75vw, 300px);
-  height: auto;
+.liveClockWidget {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
-  opacity: 0.88;
-  filter: drop-shadow(0 12px 40px var(--accent-glow));
-  animation: floatImg 6s ease-in-out infinite;
+  padding: 2rem;
+  text-align: center;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.clockTime {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -1px;
+}
+
+.clockDate {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-top: 0.25rem;
+}
+
+.clockDivider {
+  height: 1px;
+  background: var(--glass-border);
+  margin-block: 1.5rem;
+}
+
+.connectionStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 10px var(--teal);
+  animation: pulseStatus 2s infinite;
+}
+
+@keyframes pulseStatus {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(0.8); opacity: 0.5; }
 }
 
 @keyframes floatImg {

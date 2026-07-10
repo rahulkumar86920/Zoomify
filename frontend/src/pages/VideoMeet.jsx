@@ -364,7 +364,7 @@ export default function VideoMeetComponent() {
       if (signal.ice) {
         const pc = connections[fromId];
         // If the connection is ready with remote description, add the candidate directly
-        if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+        if (pc && pc.remoteDescription) {
           pc.addIceCandidate(new RTCIceCandidate(signal.ice))
             .catch((e) => console.error("Error adding ICE candidate:", e));
         } else {
