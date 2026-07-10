@@ -12,6 +12,7 @@ import VideocamIcon from "@mui/icons-material/Videocam";
 import PhoneInTalkIcon from "@mui/icons-material/PhoneInTalk";
 import PhoneDisabledIcon from "@mui/icons-material/PhoneDisabled";
 import CloseIcon from "@mui/icons-material/Close";
+import SettingsIcon from "@mui/icons-material/Settings";
 import server from "../environment";
 import "../App.css";
 
@@ -30,7 +31,16 @@ export default function ChatHome() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const socketRef = useRef(null);
 
-  const { getConversations, addToUserHistory } = useContext(AuthContext);
+  // Settings Modal State
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editUniqueId, setEditUniqueId] = useState("");
+  const [editProfilePic, setEditProfilePic] = useState("");
+  const [settingsError, setSettingsError] = useState("");
+  const [settingsSuccess, setSettingsSuccess] = useState("");
+  const [updating, setUpdating] = useState(false);
+
+  const { getConversations, addToUserHistory, updateProfile } = useContext(AuthContext);
 
   const token = localStorage.getItem("token");
   const username = localStorage.getItem("username");
@@ -44,6 +54,36 @@ export default function ChatHome() {
       navigate("/auth");
     }
   }, [token, navigate]);
+
+  useEffect(() => {
+    if (showSettingsModal) {
+      setEditName(localStorage.getItem("name") || "");
+      setEditUniqueId(localStorage.getItem("uniqueId") || "");
+      setEditProfilePic(localStorage.getItem("profilePic") || "");
+      setSettingsError("");
+      setSettingsSuccess("");
+    }
+  }, [showSettingsModal]);
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    setSettingsError("");
+    setSettingsSuccess("");
+    setUpdating(true);
+    try {
+      await updateProfile(editName, editUniqueId, editProfilePic);
+      setSettingsSuccess("Profile updated successfully!");
+      setTimeout(() => {
+        setShowSettingsModal(false);
+        setSettingsSuccess("");
+      }, 1000);
+      fetchConversationsList();
+    } catch (err) {
+      setSettingsError(err?.response?.data?.message || "Failed to update profile.");
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   // Live Clock
   useEffect(() => {
@@ -169,7 +209,13 @@ export default function ChatHome() {
         {/* Header */}
         <div className="chatSidebarHeader">
           <div className="sidebarProfileInfo">
-            <div className="avatarCircle headerAvatar">{userInitial}</div>
+            <div className="avatarCircle headerAvatar">
+              {localStorage.getItem("profilePic") ? (
+                <img src={localStorage.getItem("profilePic")} alt={name} className="avatarImg" />
+              ) : (
+                userInitial
+              )}
+            </div>
             <div className="sidebarUserDetails">
               <span className="profileName">{name}</span>
               <span className="profileId">@{uniqueId}</span>
@@ -178,6 +224,9 @@ export default function ChatHome() {
           <div className="sidebarActions">
             <button onClick={() => setShowSearchModal(true)} title="Search and Start Chat">
               <SearchIcon fontSize="small" />
+            </button>
+            <button onClick={() => setShowSettingsModal(true)} title="Account Settings">
+              <SettingsIcon fontSize="small" />
             </button>
             <button onClick={() => navigate("/history")} title="Meeting History">
               <RestoreIcon fontSize="small" />
@@ -204,7 +253,11 @@ export default function ChatHome() {
                   onClick={() => setActiveConvo(convo)}
                 >
                   <div className="avatarCircle itemAvatar">
-                    {other.name.charAt(0).toUpperCase()}
+                    {other.profilePic ? (
+                      <img src={other.profilePic} alt={other.name} className="avatarImg" />
+                    ) : (
+                      other.name.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <div className="convoItemDetails">
                     <div className="convoItemHeader">
@@ -316,6 +369,81 @@ export default function ChatHome() {
                 <PhoneDisabledIcon />
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Settings Modal ── */}
+      {showSettingsModal && (
+        <div className="searchModalOverlay">
+          <div className="searchModal settingsModal">
+            <div className="searchModalHeader">
+              <h3>Account Settings</h3>
+              <button className="closeModalBtn" onClick={() => setShowSettingsModal(false)}>
+                <CloseIcon />
+              </button>
+            </div>
+            
+            {/* Live Preview Avatar */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBlock: "1rem" }}>
+              <div className="avatarCircle" style={{ width: "80px", height: "80px", fontSize: "2rem" }}>
+                {editProfilePic ? (
+                  <img src={editProfilePic} alt="Preview" className="avatarImg" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                ) : (
+                  (editName || "U").charAt(0).toUpperCase()
+                )}
+              </div>
+              <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.5rem" }}>Avatar Preview</span>
+            </div>
+
+            <form onSubmit={handleSaveSettings} className="settingsForm">
+              <div className="authField" style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", fontSize: "0.82rem", marginBottom: "4px", color: "var(--text-secondary)" }}>Profile Image URL</label>
+                <input
+                  type="text"
+                  placeholder="https://example.com/photo.jpg"
+                  value={editProfilePic}
+                  onChange={(e) => setEditProfilePic(e.target.value)}
+                  style={{ width: "100%", padding: "0.5rem", borderRadius: "8px", background: "rgba(0,0,0,0.3)", border: "1px solid var(--glass-border)", color: "white" }}
+                />
+              </div>
+
+              <div className="authField" style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", fontSize: "0.82rem", marginBottom: "4px", color: "var(--text-secondary)" }}>Display Name</label>
+                <input
+                  type="text"
+                  placeholder="Rahul Sah"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  required
+                  style={{ width: "100%", padding: "0.5rem", borderRadius: "8px", background: "rgba(0,0,0,0.3)", border: "1px solid var(--glass-border)", color: "white" }}
+                />
+              </div>
+
+              <div className="authField" style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", fontSize: "0.82rem", marginBottom: "4px", color: "var(--text-secondary)" }}>Unique Username / ID</label>
+                <input
+                  type="text"
+                  placeholder="rahul_sah"
+                  value={editUniqueId}
+                  onChange={(e) => setEditUniqueId(e.target.value)}
+                  required
+                  style={{ width: "100%", padding: "0.5rem", borderRadius: "8px", background: "rgba(0,0,0,0.3)", border: "1px solid var(--glass-border)", color: "white" }}
+                />
+              </div>
+
+              {settingsError && <p className="authError" style={{ marginBlock: "0.5rem" }}>⚠ {settingsError}</p>}
+              {settingsSuccess && <p style={{ color: "var(--teal)", fontSize: "0.85rem", marginBlock: "0.5rem", textAlign: "center" }}>✓ {settingsSuccess}</p>}
+
+              <button
+                type="submit"
+                className="authSubmitBtn"
+                disabled={updating}
+                style={{ width: "100%", marginTop: "0.5rem", padding: "0.6rem" }}
+              >
+                {updating ? "Saving Changes..." : "Save Settings →"}
+              </button>
+            </form>
           </div>
         </div>
       )}

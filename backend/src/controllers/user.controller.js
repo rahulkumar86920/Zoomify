@@ -28,7 +28,13 @@ const login = async (req, res) => {
 
       user.token = token;
       await user.save();
-      return res.status(httpStatus.OK).json({ token: token, name: user.name, username: user.username, uniqueId: user.uniqueId });
+      return res.status(httpStatus.OK).json({
+        token: token,
+        name: user.name,
+        username: user.username,
+        uniqueId: user.uniqueId,
+        profilePic: user.profilePic || ""
+      });
     } else {
       return res
         .status(httpStatus.UNAUTHORIZED)
@@ -127,7 +133,7 @@ const searchUsers = async (req, res) => {
           ],
         },
       ],
-    }).select("name username uniqueId");
+    }).select("name username uniqueId profilePic");
 
     res.json(users);
   } catch (e) {
@@ -135,4 +141,43 @@ const searchUsers = async (req, res) => {
   }
 };
 
-export { login, register, getUserHistory, addToHistory, searchUsers };
+const updateProfile = async (req, res) => {
+  const token = req.headers.token || req.body.token;
+  const { name, uniqueId, profilePic } = req.body;
+
+  if (!token) {
+    return res.status(httpStatus.UNAUTHORIZED).json({ message: "No token provided" });
+  }
+
+  try {
+    const user = await User.findOne({ token });
+    if (!user) {
+      return res.status(httpStatus.NOT_FOUND).json({ message: "User not found" });
+    }
+
+    // If changing unique ID, verify it is not already taken by another user
+    if (uniqueId && uniqueId !== user.uniqueId) {
+      const existing = await User.findOne({ uniqueId });
+      if (existing) {
+        return res.status(httpStatus.CONFLICT).json({ message: "Unique ID is already taken" });
+      }
+      user.uniqueId = uniqueId;
+    }
+
+    if (name) user.name = name;
+    if (profilePic !== undefined) user.profilePic = profilePic;
+
+    await user.save();
+
+    res.json({
+      message: "Profile updated successfully",
+      name: user.name,
+      uniqueId: user.uniqueId,
+      profilePic: user.profilePic
+    });
+  } catch (e) {
+    res.status(500).json({ message: `Error updating profile: ${e.message}` });
+  }
+};
+
+export { login, register, getUserHistory, addToHistory, searchUsers, updateProfile };

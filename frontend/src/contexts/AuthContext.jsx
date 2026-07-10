@@ -53,8 +53,29 @@ export const AuthProvider = ({ children }) => {
         if (request.data.name) localStorage.setItem("name", request.data.name);
         if (request.data.username) localStorage.setItem("username", request.data.username);
         if (request.data.uniqueId) localStorage.setItem("uniqueId", request.data.uniqueId);
+        localStorage.setItem("profilePic", request.data.profilePic || "");
         router("/home");
       }
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const updateProfile = async (name, uniqueId, profilePic) => {
+    try {
+      let request = await client.put("/profile", {
+        name,
+        uniqueId,
+        profilePic,
+      }, {
+        headers: { token: localStorage.getItem("token") },
+      });
+      if (request.status === httpStatus.OK) {
+        if (request.data.name) localStorage.setItem("name", request.data.name);
+        if (request.data.uniqueId) localStorage.setItem("uniqueId", request.data.uniqueId);
+        localStorage.setItem("profilePic", request.data.profilePic || "");
+      }
+      return request.data;
     } catch (err) {
       throw err;
     }
@@ -143,6 +164,7 @@ export const AuthProvider = ({ children }) => {
     getConversations,
     getMessages,
     createOrGetConversation,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={data}>{children}</AuthContext.Provider>;

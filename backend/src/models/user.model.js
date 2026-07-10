@@ -12,6 +12,7 @@ const userSchema = new Schema(
             unique: true,
             default: () => crypto.randomBytes(4).toString("hex"),
         },
+        profilePic: { type: String, default: "" },
         contacts: [{ type: Schema.Types.ObjectId, ref: "User" }],
     },
     { timestamps: true }

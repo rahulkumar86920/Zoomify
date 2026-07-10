@@ -67,7 +67,11 @@ export default function SearchUsers({ onClose, onSelectConvo }) {
                 onClick={() => handleSelectUser(user)}
               >
                 <div className="avatarCircle">
-                  {user.name.charAt(0).toUpperCase()}
+                  {user.profilePic ? (
+                    <img src={user.profilePic} alt={user.name} className="avatarImg" />
+                  ) : (
+                    user.name.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div className="searchResultText">
                   <div className="searchResultName">{user.name}</div>

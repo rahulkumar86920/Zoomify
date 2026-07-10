@@ -18,7 +18,7 @@ const getConversations = async (req, res) => {
     const conversations = await Conversation.find({
       participants: user._id,
     })
-      .populate("participants", "name username uniqueId")
+      .populate("participants", "name username uniqueId profilePic")
       .sort({ lastMessageAt: -1 });
 
     res.json(conversations);
@@ -48,7 +48,7 @@ const getMessages = async (req, res) => {
     }
 
     const messages = await Message.find({ conversationId })
-      .populate("sender", "name username uniqueId")
+      .populate("sender", "name username uniqueId profilePic")
       .sort({ createdAt: 1 }); // Oldest first
 
     res.json(messages);
@@ -83,7 +83,7 @@ const createOrGetConversation = async (req, res) => {
     // Check if conversation already exists
     let conversation = await Conversation.findOne({
       participants: { $all: [user._id, recipient._id] },
-    }).populate("participants", "name username uniqueId");
+    }).populate("participants", "name username uniqueId profilePic");
 
     if (!conversation) {
       conversation = new Conversation({
@@ -92,7 +92,7 @@ const createOrGetConversation = async (req, res) => {
       await conversation.save();
       
       // Populate participants for response
-      conversation = await Conversation.findById(conversation._id).populate("participants", "name username uniqueId");
+      conversation = await Conversation.findById(conversation._id).populate("participants", "name username uniqueId profilePic");
 
       // Add each other to contacts if not already there
       if (!user.contacts.includes(recipient._id)) {

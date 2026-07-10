@@ -151,7 +151,11 @@ export default function ChatView({ convo, socket, onBack }) {
         </button>
         <div className="chatHeaderUserInfo">
           <div className="avatarCircle headerAvatar">
-            {otherUser.name.charAt(0).toUpperCase()}
+            {otherUser.profilePic ? (
+              <img src={otherUser.profilePic} alt={otherUser.name} className="avatarImg" />
+            ) : (
+              otherUser.name.charAt(0).toUpperCase()
+            )}
           </div>
           <div className="chatHeaderUserDetails">
             <span className="chatHeaderUserName">{otherUser.name}</span>
