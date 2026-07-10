@@ -45,6 +45,7 @@ export default function VideoMeetComponent() {
   const [fullscreenVideo, setFullscreenVideo] = useState(null);
 
   const connections = useRef({}).current;
+  const iceCandidatesQueue = useRef({}); // Queues remote ICE candidates during signaling handshake
 
   // ── Permissions ──────────────────────────────────────────────
   useEffect(() => {
@@ -265,6 +266,15 @@ export default function VideoMeetComponent() {
         connections[fromId]
           .setRemoteDescription(new RTCSessionDescription(signal.sdp))
           .then(() => {
+            // Process any queued ICE candidates for this peer
+            const queue = iceCandidatesQueue.current[fromId] || [];
+            queue.forEach((cand) => {
+              connections[fromId]
+                .addIceCandidate(new RTCIceCandidate(cand))
+                .catch((e) => console.error("Error adding queued ICE candidate:", e));
+            });
+            iceCandidatesQueue.current[fromId] = [];
+
             if (signal.sdp.type === "offer") {
               connections[fromId]
                 .createAnswer()
@@ -287,9 +297,18 @@ export default function VideoMeetComponent() {
       }
 
       if (signal.ice) {
-        connections[fromId]
-          .addIceCandidate(new RTCIceCandidate(signal.ice))
-          .catch((e) => console.error("Error adding ICE candidate:", e));
+        const pc = connections[fromId];
+        // If the connection is ready with remote description, add the candidate directly
+        if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+          pc.addIceCandidate(new RTCIceCandidate(signal.ice))
+            .catch((e) => console.error("Error adding ICE candidate:", e));
+        } else {
+          // Otherwise, queue it until setRemoteDescription completes
+          if (!iceCandidatesQueue.current[fromId]) {
+            iceCandidatesQueue.current[fromId] = [];
+          }
+          iceCandidatesQueue.current[fromId].push(signal.ice);
+        }
       }
     }
   };
