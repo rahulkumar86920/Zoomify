@@ -306,7 +306,7 @@ export default function VideoMeetComponent() {
       socketRef.current.on("chat-message", addMessage);
 
       socketRef.current.on("user-left", (id) => {
-        setVideos((videos) => videos.filter((v) => v.socketId !== id));
+        setVideos((videos) => videos.filter((video) => video.socketId !== id));
         if (connections[id]) {
           try { connections[id].close(); } catch (_) {}
           delete connections[id];
@@ -315,7 +315,6 @@ export default function VideoMeetComponent() {
 
       socketRef.current.on("user-joined", (id, clients) => {
         clients.forEach((socketListId) => {
-          // Skip if connection already exists for this peer
           if (connections[socketListId]) return;
 
           connections[socketListId] = new RTCPeerConnection(peerConfigConnections);
@@ -330,55 +329,50 @@ export default function VideoMeetComponent() {
             }
           };
 
-          // ontrack is the modern replacement for onaddstream
-          connections[socketListId].ontrack = (event) => {
-            const incomingStream = event.streams[0];
-            if (!incomingStream) return;
-
+          connections[socketListId].onaddstream = (event) => {
             const videoExists = videoRef.current.find(
-              (v) => v.socketId === socketListId
+              (video) => video.socketId === socketListId
             );
 
             if (videoExists) {
               setVideos((videos) =>
-                videos.map((v) =>
-                  v.socketId === socketListId
-                    ? { ...v, stream: incomingStream }
-                    : v
+                videos.map((video) =>
+                  video.socketId === socketListId
+                    ? { ...video, stream: event.stream }
+                    : video
                 )
               );
             } else {
               const newVideo = {
                 socketId: socketListId,
-                stream: incomingStream,
+                stream: event.stream,
                 autoplay: true,
                 playsinline: true,
               };
               setVideos((videos) => {
-                const updated = [...videos, newVideo];
-                videoRef.current = updated;
-                return updated;
+                const updatedVideos = [...videos, newVideo];
+                videoRef.current = updatedVideos;
+                return updatedVideos;
               });
             }
           };
 
-          // Add tracks (modern API) instead of addStream
           if (window.localStream) {
-            window.localStream.getTracks().forEach((track) => {
-              connections[socketListId].addTrack(track, window.localStream);
-            });
+            connections[socketListId].addStream(window.localStream);
           } else {
-            const blankStream = new MediaStream([black(), silence()]);
-            window.localStream = blankStream;
-            blankStream.getTracks().forEach((track) => {
-              connections[socketListId].addTrack(track, blankStream);
-            });
+            window.localStream = new MediaStream([black(), silence()]);
+            connections[socketListId].addStream(window.localStream);
           }
         });
 
         if (id === socketIdRef.current) {
-          for (const id2 in connections) {
+          for (let id2 in connections) {
             if (id2 === socketIdRef.current) continue;
+            try {
+              connections[id2].addStream(window.localStream);
+            } catch (e) {
+              console.error("Error adding stream to connection:", e);
+            }
             connections[id2]
               .createOffer()
               .then((description) => {
