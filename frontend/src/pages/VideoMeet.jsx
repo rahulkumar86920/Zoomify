@@ -516,6 +516,7 @@ export default function VideoMeetComponent() {
   useEffect(() => {
     if (!askForUsername && localVideoref.current && window.localStream) {
       localVideoref.current.srcObject = window.localStream;
+      localVideoref.current.play().catch((err) => console.warn("Local video play interrupted:", err));
     }
   }, [askForUsername]);
 
@@ -653,6 +654,7 @@ export default function VideoMeetComponent() {
                   ref={(ref) => {
                     if (ref && vid.stream) {
                       ref.srcObject = vid.stream;
+                      ref.play().catch((err) => console.warn("Video play interrupted:", err));
                     }
                   }}
                   autoPlay
