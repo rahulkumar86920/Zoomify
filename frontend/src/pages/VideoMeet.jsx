@@ -18,7 +18,14 @@ import server from "../environment";
 const server_url = server;
 
 const peerConfigConnections = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:19302" },
+    { urls: "stun:stun.services.mozilla.com" }
+  ],
 };
 
 export default function VideoMeetComponent() {
@@ -374,7 +381,7 @@ export default function VideoMeetComponent() {
             const queue = iceCandidatesQueue.current[fromId] || [];
             queue.forEach((cand) => {
               connections[fromId]
-                .addIceCandidate(new RTCIceCandidate(cand))
+                .addIceCandidate(cand)
                 .catch((e) => console.error("Error adding queued ICE candidate:", e));
             });
             iceCandidatesQueue.current[fromId] = [];
@@ -404,7 +411,7 @@ export default function VideoMeetComponent() {
         const pc = connections[fromId];
         // If the connection is ready with remote description, add the candidate directly
         if (pc && pc.remoteDescription) {
-          pc.addIceCandidate(new RTCIceCandidate(signal.ice))
+          pc.addIceCandidate(signal.ice)
             .catch((e) => console.error("Error adding ICE candidate:", e));
         } else {
           // Otherwise, queue it until setRemoteDescription completes
