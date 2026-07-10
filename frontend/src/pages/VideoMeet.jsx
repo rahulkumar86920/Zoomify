@@ -32,7 +32,9 @@ export default function VideoMeetComponent() {
   const socketRef = useRef();
   const socketIdRef = useRef();
   const localVideoref = useRef();
+  const lobbyVideoref = useRef();
   const videoRef = useRef([]);
+  const isInitialMount = useRef(true);
 
   const [videoAvailable, setVideoAvailable] = useState(false);
   const [audioAvailable, setAudioAvailable] = useState(false);
@@ -81,8 +83,8 @@ export default function VideoMeetComponent() {
         setAudio(audioTracks.length > 0);
 
         window.localStream = userMediaStream;
-        if (localVideoref.current) {
-          localVideoref.current.srcObject = userMediaStream;
+        if (lobbyVideoref.current) {
+          lobbyVideoref.current.srcObject = userMediaStream;
         }
       } else {
         setVideoAvailable(false);
@@ -100,6 +102,10 @@ export default function VideoMeetComponent() {
 
   useEffect(() => {
     if (video !== undefined && audio !== undefined) {
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+      }
       getUserMedia();
     }
   }, [video, audio]);
@@ -228,7 +234,9 @@ export default function VideoMeetComponent() {
     }
 
     window.localStream = stream;
-    if (localVideoref.current) {
+    if (askForUsername && lobbyVideoref.current) {
+      lobbyVideoref.current.srcObject = stream;
+    } else if (!askForUsername && localVideoref.current) {
       localVideoref.current.srcObject = stream;
     }
 
@@ -597,7 +605,7 @@ export default function VideoMeetComponent() {
         <div className={styles.lobbyContainer}>
           <div className={styles.lobbyCard}>
             <h2>⚡ Join Meeting</h2>
-            <video ref={localVideoref} autoPlay muted />
+            <video ref={lobbyVideoref} autoPlay muted />
             {localStorage.getItem("token") ? (
               <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem", marginBlock: "6px" }}>
                 Joining as: <strong style={{ color: "var(--text-primary)" }}>{username}</strong>
