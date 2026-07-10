@@ -15,109 +15,99 @@ export const connectToSocket = (server) => {
     });
 
     io.on("connection", (socket) => {
-        console.log(`[Socket] Connected: ${socket.id}`);
+        console.log("SOMETHING CONNECTED")
 
-        // ── Join a call room ──────────────────────────────────────
         socket.on("join-call", (path) => {
-            if (!connections[path]) {
-                connections[path] = [];
+            if (connections[path] === undefined) {
+                connections[path] = []
             }
+            connections[path].push(socket.id)
 
-            connections[path].push(socket.id);
             timeOnline[socket.id] = new Date();
 
-            console.log(`[Socket] ${socket.id} joined room: ${path} (${connections[path].length} members)`);
-
-            // Notify everyone in the room (including the new joiner) about the updated list
-            connections[path].forEach(elem => {
-                io.to(elem).emit("user-joined", socket.id, connections[path]);
-            });
-
-            // Replay chat history for the new joiner
-            if (messages[path]) {
-                messages[path].forEach(msg => {
-                    io.to(socket.id).emit(
-                        "chat-message",
-                        msg.data,
-                        msg.sender,
-                        msg["socket-id-sender"]
-                    );
-                });
+            for (let a = 0; a < connections[path].length; a++) {
+                io.to(connections[path][a]).emit("user-joined", socket.id, connections[path])
             }
-        });
 
-        // ── WebRTC signalling relay ───────────────────────────────
+            if (messages[path] !== undefined) {
+                for (let a = 0; a < messages[path].length; ++a) {
+                    io.to(socket.id).emit("chat-message", messages[path][a]['data'],
+                        messages[path][a]['sender'], messages[path][a]['socket-id-sender'])
+                }
+            }
+        })
+
         socket.on("signal", (toId, message) => {
             io.to(toId).emit("signal", socket.id, message);
-        });
+        })
 
         // ── Screen share toggle notification ─────────────────────
-        // Broadcast to all peers in the room so they can update UI
         socket.on("screen-toggle", (isSharing) => {
-            const room = findRoom(socket.id);
-            if (!room) return;
-
-            connections[room].forEach(elem => {
-                if (elem !== socket.id) {
-                    io.to(elem).emit("peer-screen-toggle", socket.id, isSharing);
+            let room
+            for (const [k, v] of Object.entries(connections)) {
+                if (v.includes(socket.id)) {
+                    room = k
+                    break
                 }
-            });
-        });
-
-        // ── Chat messages ─────────────────────────────────────────
-        socket.on("chat-message", (data, sender) => {
-            const room = findRoom(socket.id);
-            if (!room) return;
-
-            if (!messages[room]) messages[room] = [];
-            messages[room].push({
-                sender,
-                data,
-                "socket-id-sender": socket.id
-            });
-
-            console.log(`[Chat] ${room} | ${sender}: ${data}`);
-
-            connections[room].forEach(elem => {
-                io.to(elem).emit("chat-message", data, sender, socket.id);
-            });
-        });
-
-        // ── Disconnect ────────────────────────────────────────────
-        socket.on("disconnect", () => {
-            const elapsed = Math.abs(timeOnline[socket.id] - new Date());
-            console.log(`[Socket] Disconnected: ${socket.id} (was online ${Math.round(elapsed / 1000)}s)`);
-            delete timeOnline[socket.id];
-
-            const room = findRoom(socket.id);
-            if (!room) return;
-
-            // Notify all remaining peers
-            connections[room].forEach(elem => {
-                io.to(elem).emit("user-left", socket.id);
-            });
-
-            // Remove from room
-            connections[room] = connections[room].filter(id => id !== socket.id);
-
-            // Clean up empty rooms to prevent memory leaks
-            if (connections[room].length === 0) {
-                delete connections[room];
-                delete messages[room];
-                console.log(`[Socket] Room cleaned up: ${room}`);
             }
-        });
-    });
+            if (room && connections[room]) {
+                connections[room].forEach(elem => {
+                    if (elem !== socket.id) {
+                        io.to(elem).emit("peer-screen-toggle", socket.id, isSharing);
+                    }
+                });
+            }
+        })
+
+        socket.on("chat-message", (data, sender) => {
+            const [matchingRoom, found] = Object.entries(connections)
+                .reduce(([room, isFound], [roomKey, roomValue]) => {
+                    if (!isFound && roomValue.includes(socket.id)) {
+                        return [roomKey, true];
+                    }
+                    return [room, isFound];
+                }, ['', false]);
+
+            if (found === true) {
+                if (messages[matchingRoom] === undefined) {
+                    messages[matchingRoom] = []
+                }
+
+                messages[matchingRoom].push({ 'sender': sender, "data": data, "socket-id-sender": socket.id })
+                console.log("message", matchingRoom, ":", sender, data)
+
+                connections[matchingRoom].forEach((elem) => {
+                    io.to(elem).emit("chat-message", data, sender, socket.id)
+                })
+            }
+        })
+
+        socket.on("disconnect", () => {
+            var diffTime = Math.abs(timeOnline[socket.id] - new Date())
+            var key
+
+            for (const [k, v] of JSON.parse(JSON.stringify(Object.entries(connections)))) {
+                for (let a = 0; a < v.length; ++a) {
+                    if (v[a] === socket.id) {
+                        key = k
+
+                        for (let a = 0; a < connections[key].length; ++a) {
+                            io.to(connections[key][a]).emit('user-left', socket.id)
+                        }
+
+                        var index = connections[key].indexOf(socket.id)
+                        connections[key].splice(index, 1)
+
+                        if (connections[key].length === 0) {
+                            delete connections[key]
+                        }
+                    }
+                }
+            }
+        })
+    })
 
     return io;
-};
-
-// ── Helper: find which room a socket belongs to ───────────────
-function findRoom(socketId) {
-    for (const [room, members] of Object.entries(connections)) {
-        if (members.includes(socketId)) return room;
-    }
-    return null;
 }
 
 
