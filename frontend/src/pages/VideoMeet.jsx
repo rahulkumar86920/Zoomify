@@ -315,6 +315,7 @@ export default function VideoMeetComponent() {
 
       socketRef.current.on("user-joined", (id, clients) => {
         clients.forEach((socketListId) => {
+          if (socketListId === socketIdRef.current) return;
           if (connections[socketListId]) return;
 
           connections[socketListId] = new RTCPeerConnection(peerConfigConnections);
@@ -367,12 +368,6 @@ export default function VideoMeetComponent() {
 
         if (id === socketIdRef.current) {
           for (let id2 in connections) {
-            if (id2 === socketIdRef.current) continue;
-            try {
-              connections[id2].addStream(window.localStream);
-            } catch (e) {
-              console.error("Error adding stream to connection:", e);
-            }
             connections[id2]
               .createOffer()
               .then((description) => {
@@ -497,6 +492,13 @@ export default function VideoMeetComponent() {
   const closeFullscreen = useCallback(() => {
     setFullscreenVideo(null);
   }, []);
+
+  // Assign localStream to localVideoref when lobby is closed
+  useEffect(() => {
+    if (!askForUsername && localVideoref.current && window.localStream) {
+      localVideoref.current.srcObject = window.localStream;
+    }
+  }, [askForUsername]);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") closeFullscreen(); };
