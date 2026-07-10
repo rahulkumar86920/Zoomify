@@ -4,8 +4,10 @@ import SendIcon from "@mui/icons-material/Send";
 import VideocamIcon from "@mui/icons-material/Videocam";
 import CallIcon from "@mui/icons-material/Call";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { useNavigate } from "react-router-dom";
 
 export default function ChatView({ convo, socket, onBack }) {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -139,7 +141,7 @@ export default function ChatView({ convo, socket, onBack }) {
     });
 
     // Go directly to room
-    window.location.href = `/${code}`;
+    navigate(`/${code}`);
   };
 
   return (
