@@ -1,172 +1,196 @@
-import * as React from "react";
-import Avatar from "@mui/material/Avatar";
-import Button from "@mui/material/Button";
-import CssBaseline from "@mui/material/CssBaseline";
-import TextField from "@mui/material/TextField";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Checkbox from "@mui/material/Checkbox";
-import Link from "@mui/material/Link";
-import Paper from "@mui/material/Paper";
-import Box from "@mui/material/Box";
-import Grid from "@mui/material/Grid";
+import React, { useState, useContext, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import "../App.css";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import Typography from "@mui/material/Typography";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { AuthContext } from "../contexts/AuthContext";
-import { Snackbar } from "@mui/material";
-import RandomImage from "./RandomImage";
-
-// TODO remove, this demo shouldn't need to reset the theme.
-
-const defaultTheme = createTheme();
 
 export default function Authentication() {
-  const [username, setUsername] = React.useState();
-  const [password, setPassword] = React.useState();
-  const [name, setName] = React.useState();
-  const [error, setError] = React.useState();
-  const [message, setMessage] = React.useState();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName]         = useState("");
+  const [error, setError]       = useState("");
+  const [message, setMessage]   = useState("");
+  const [formState, setFormState] = useState(0); // 0 = login, 1 = register
+  const [showPass, setShowPass] = useState(false);
+  const [showSnack, setShowSnack] = useState(false);
+  const [loading, setLoading]   = useState(false);
 
-  const [formState, setFormState] = React.useState(0);
+  const { handleRegister, handleLogin } = useContext(AuthContext);
+  const navigate = useNavigate();
 
-  const [open, setOpen] = React.useState(false);
+  useEffect(() => {
+    if (showSnack) {
+      const t = setTimeout(() => setShowSnack(false), 3500);
+      return () => clearTimeout(t);
+    }
+  }, [showSnack]);
 
-  const { handleRegister, handleLogin } = React.useContext(AuthContext);
-  const accessKey = "b9-Rw3J0xC0Ra9fCyr0JFPkz7gvgDR_PsKdcl0T75ME"; // Replace with your Unsplash access key
-  let handleAuth = async () => {
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
     try {
       if (formState === 0) {
-        let result = await handleLogin(username, password);
-      }
-      if (formState === 1) {
-        let result = await handleRegister(name, username, password);
-        console.log(result);
-        setUsername("");
-        setMessage(result);
-        setOpen(true);
-        setError("");
+        await handleLogin(username, password);
+      } else {
+        const result = await handleRegister(name, username, password);
+        setMessage(result || "Account created! Please sign in.");
+        setShowSnack(true);
         setFormState(0);
+        setUsername("");
         setPassword("");
+        setName("");
       }
     } catch (err) {
-      console.log(err);
-      let message = err.response.data.message;
-      setError(message);
+      const msg = err?.response?.data?.message || "Something went wrong.";
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
+  const switchTab = (tab) => {
+    setFormState(tab);
+    setError("");
+  };
+
   return (
-    <ThemeProvider theme={defaultTheme}>
-      <Grid container component="main" sx={{ height: "100vh" }}>
-        <CssBaseline />
-        <Grid
-          item
-          xs={false}
-          sm={4}
-          md={7}
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: (t) =>
-              t.palette.mode === "light"
-                ? t.palette.grey[50]
-                : t.palette.grey[900],
-          }}
+    <div className="authPage">
+      {/* Nav */}
+      <nav className="authNav">
+        <span
+          className="authNavBrand"
+          onClick={() => navigate("/")}
+          style={{ cursor: "pointer" }}
         >
-          <RandomImage />
-        </Grid>
+          ⚡ Zoomify
+        </span>
+      </nav>
 
-        <Grid item xs={12} sm={8} md={5} component={Paper} elevation={6} square>
-          <Box
-            sx={{
-              my: 8,
-              mx: 4,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-            }}
-          >
-            <Avatar sx={{ m: 1, bgcolor: "secondary.main" }}>
-              <LockOutlinedIcon />
-            </Avatar>
+      {/* Card */}
+      <div className="authContent">
+        <div className="authCard">
+          {/* Icon */}
+          <div className="authIconWrapper">
+            <LockOutlinedIcon />
+          </div>
 
-            <div>
-              <Button
-                variant={formState === 0 ? "contained" : ""}
-                onClick={() => {
-                  setFormState(0);
-                }}
-              >
-                Sign In
-              </Button>
-              <Button
-                variant={formState === 1 ? "contained" : ""}
-                onClick={() => {
-                  setFormState(1);
-                }}
-              >
-                Sign Up
-              </Button>
+          <h1>{formState === 0 ? "Welcome back" : "Create account"}</h1>
+          <p>
+            {formState === 0
+              ? "Sign in to your Zoomify account"
+              : "Join Zoomify — it's free"}
+          </p>
+
+          {/* Tabs */}
+          <div className="authTabs">
+            <button
+              type="button"
+              className={`authTab ${formState === 0 ? "active" : ""}`}
+              onClick={() => switchTab(0)}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              className={`authTab ${formState === 1 ? "active" : ""}`}
+              onClick={() => switchTab(1)}
+            >
+              Sign Up
+            </button>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleAuth} noValidate>
+            {formState === 1 && (
+              <div className="authField">
+                <label htmlFor="full-name">Full Name</label>
+                <input
+                  id="full-name"
+                  type="text"
+                  placeholder="Rahul Sah"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoComplete="name"
+                  required
+                />
+              </div>
+            )}
+
+            <div className="authField">
+              <label htmlFor="auth-username">Username</label>
+              <input
+                id="auth-username"
+                type="text"
+                placeholder="your_username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                required
+              />
             </div>
 
-            <Box component="form" noValidate sx={{ mt: 1 }}>
-              {formState === 1 ? (
-                <TextField
-                  margin="normal"
-                  required
-                  fullWidth
-                  id="username"
-                  label="Full Name"
-                  name="username"
-                  value={name}
-                  autoFocus
-                  onChange={(e) => setName(e.target.value)}
-                />
-              ) : (
-                <></>
-              )}
-
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                id="username"
-                label="Username"
-                name="username"
-                value={username}
-                autoFocus
-                onChange={(e) => setUsername(e.target.value)}
-              />
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="password"
-                label="Password"
+            <div className="authField" style={{ position: "relative" }}>
+              <label htmlFor="auth-password">Password</label>
+              <input
+                id="auth-password"
+                type={showPass ? "text" : "password"}
+                placeholder="••••••••"
                 value={password}
-                type="password"
                 onChange={(e) => setPassword(e.target.value)}
-                id="password"
+                autoComplete={formState === 0 ? "current-password" : "new-password"}
+                style={{ paddingRight: "2.8rem" }}
+                required
               />
-
-              <p style={{ color: "red" }}>{error}</p>
-
-              <Button
+              <button
                 type="button"
-                fullWidth
-                variant="contained"
-                sx={{ mt: 3, mb: 2 }}
-                onClick={handleAuth}
+                onClick={() => setShowPass((v) => !v)}
+                style={{
+                  position: "absolute",
+                  right: "0.75rem",
+                  top: "2.25rem",
+                  background: "none",
+                  border: "none",
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  padding: 0,
+                }}
+                tabIndex={-1}
               >
-                {formState === 0 ? "Login " : "Register"}
-              </Button>
-            </Box>
-          </Box>
-        </Grid>
-      </Grid>
+                {showPass ? (
+                  <VisibilityOffIcon style={{ fontSize: "1.1rem" }} />
+                ) : (
+                  <VisibilityIcon style={{ fontSize: "1.1rem" }} />
+                )}
+              </button>
+            </div>
 
-      <Snackbar open={open} autoHideDuration={4000} message={message} />
-    </ThemeProvider>
+            {error && <p className="authError">⚠ {error}</p>}
+
+            <button
+              type="submit"
+              className="authSubmitBtn"
+              disabled={loading}
+              style={{ opacity: loading ? 0.7 : 1, cursor: loading ? "not-allowed" : "pointer" }}
+            >
+              {loading
+                ? "Please wait…"
+                : formState === 0
+                ? "Sign In →"
+                : "Create Account →"}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Success snackbar */}
+      {showSnack && (
+        <div className="authSnackbar">✓ {message}</div>
+      )}
+    </div>
   );
 }

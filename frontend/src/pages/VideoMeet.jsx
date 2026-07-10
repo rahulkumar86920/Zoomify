@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
-import { Badge, IconButton, TextField, Button } from "@mui/material";
+import { Badge, IconButton } from "@mui/material";
 import VideocamIcon from "@mui/icons-material/Videocam";
 import VideocamOffIcon from "@mui/icons-material/VideocamOff";
 import CallEndIcon from "@mui/icons-material/CallEnd";
@@ -527,21 +527,21 @@ export default function VideoMeetComponent() {
   return (
     <div>
       {askForUsername ? (
-        <div>
-          <h2>Enter into Lobby</h2>
-          <TextField
-            id="outlined-basic"
-            label="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            variant="outlined"
-            onKeyDown={(e) => e.key === "Enter" && connect()}
-          />
-          <Button variant="contained" onClick={connect}>
-            Connect
-          </Button>
-          <div>
-            <video ref={localVideoref} autoPlay muted></video>
+        <div className={styles.lobbyContainer}>
+          <div className={styles.lobbyCard}>
+            <h2>⚡ Join Meeting</h2>
+            <video ref={localVideoref} autoPlay muted />
+            <input
+              id="lobby-username"
+              className={styles.lobbyInput}
+              placeholder="Enter your name…"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && connect()}
+            />
+            <button className={styles.lobbyConnectBtn} onClick={connect}>
+              Join Call →
+            </button>
           </div>
         </div>
       ) : (
@@ -550,31 +550,30 @@ export default function VideoMeetComponent() {
           {showModal && (
             <div className={styles.chatRoom}>
               <div className={styles.chatContainer}>
-                <h1>Chat</h1>
+                <h1>💬 Chat</h1>
                 <div className={styles.chattingDisplay}>
                   {messages.length ? (
                     messages.map((item, index) => (
-                      <div style={{ marginBottom: "20px" }} key={index}>
-                        <p style={{ fontWeight: "bold" }}>{item.sender}</p>
+                      <div key={index}>
+                        <p>{item.sender}</p>
                         <p>{item.data}</p>
                       </div>
                     ))
                   ) : (
-                    <p>No Messages Yet</p>
+                    <p className={styles.chatNoMsg}>No messages yet…</p>
                   )}
                 </div>
                 <div className={styles.chattingArea}>
-                  <TextField
+                  <input
                     value={message}
                     onChange={handleMessage}
                     id="chat-input"
-                    label="Enter Your Chat"
-                    variant="outlined"
+                    placeholder="Type a message…"
                     onKeyDown={(e) => e.key === "Enter" && sendMessage()}
                   />
-                  <Button variant="contained" onClick={sendMessage}>
+                  <button className={styles.chatSendBtn} onClick={sendMessage}>
                     Send
-                  </Button>
+                  </button>
                 </div>
               </div>
             </div>

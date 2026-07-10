@@ -1,58 +1,71 @@
 import React from "react";
 import "../App.css";
 import { Link, useNavigate } from "react-router-dom";
+import VideocamIcon from "@mui/icons-material/Videocam";
+import SecurityIcon from "@mui/icons-material/Security";
+import SpeedIcon from "@mui/icons-material/Speed";
+import GroupsIcon from "@mui/icons-material/Groups";
+
 export default function LandingPage() {
   const router = useNavigate();
 
   return (
     <div className="landingPageContainer">
+      {/* ── Navigation ── */}
       <nav>
         <div className="navHeader">
-          <h2>Zoomify Video Call</h2>
+          <h2>⚡ Zoomify</h2>
         </div>
         <div className="navlist">
-          <p
-            onClick={() => {
-              /* router("/aljk23"); */
-              router("/guest-login");
-            }}
-          >
-            Join as Guest
-          </p>
-          <p
-            onClick={() => {
-              router("/auth");
-            }}
-          >
-            Register
-          </p>
+          <p onClick={() => router("/guest-login")}>Guest</p>
+          <p onClick={() => router("/auth")}>Register</p>
           <div
-            onClick={() => {
-              router("/auth");
-            }}
             role="button"
+            onClick={() => router("/auth")}
           >
             <p>Login</p>
           </div>
         </div>
       </nav>
 
+      {/* ── Hero ── */}
       <div className="landingMainContainer">
-        <div>
+        <div className="heroContent">
+          <div className="heroBadge">
+            <span className="heroBadgeDot" />
+            Now live · Free to use
+          </div>
+
           <h1>
-            {" "}
-            {/* this is for the headline  */}
-            <span style={{ color: "orange" }}>Connect</span> with your <br />
-            loved Ones😊
+            <span className="accent">Connect</span>{" "}
+            with your<br />loved ones 😊
           </h1>
-          {/* tag line  */}
-          <p className="spam">Skip the travel, Zoomify the moment</p>
+
+          <p className="spam">
+            Skip the travel, Zoomify the moment.
+            <br />Crystal-clear video calls, zero friction.
+          </p>
 
           <div role="button">
-            <Link to={"/auth"}>Get Started</Link>
+            <Link to="/auth">Get Started Free →</Link>
+          </div>
+
+          {/* Feature chips */}
+          <div className="featureChips">
+            <span className="chip">
+              <VideocamIcon /> HD Video
+            </span>
+            <span className="chip">
+              <SecurityIcon /> End-to-End
+            </span>
+            <span className="chip">
+              <SpeedIcon /> Low Latency
+            </span>
+            <span className="chip">
+              <GroupsIcon /> Group Calls
+            </span>
           </div>
         </div>
-        <div>{/*   <img src="/mobile.png" alt="" /> */}</div>
       </div>
     </div>
   );
