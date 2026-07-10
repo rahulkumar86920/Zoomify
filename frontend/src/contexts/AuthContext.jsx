@@ -50,6 +50,8 @@ export const AuthProvider = ({ children }) => {
 
       if (request.status === httpStatus.OK) {
         localStorage.setItem("token", request.data.token);
+        if (request.data.name) localStorage.setItem("name", request.data.name);
+        if (request.data.username) localStorage.setItem("username", request.data.username);
         router("/home");
       }
     } catch (err) {

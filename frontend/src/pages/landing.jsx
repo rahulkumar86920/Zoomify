@@ -9,6 +9,12 @@ import GroupsIcon from "@mui/icons-material/Groups";
 export default function LandingPage() {
   const router = useNavigate();
 
+  React.useEffect(() => {
+    if (localStorage.getItem("token")) {
+      router("/home");
+    }
+  }, [router]);
+
   return (
     <div className="landingPageContainer">
       {/* ── Navigation ── */}

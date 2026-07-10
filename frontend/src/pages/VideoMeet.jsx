@@ -38,7 +38,9 @@ export default function VideoMeetComponent() {
   const [message, setMessage] = useState("");
   const [newMessages, setNewMessages] = useState(0);
   const [askForUsername, setAskForUsername] = useState(true);
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(() => {
+    return localStorage.getItem("name") || localStorage.getItem("username") || "";
+  });
   const [videos, setVideos] = useState([]);
 
   // Fullscreen overlay: { stream, label, isScreen }
@@ -488,7 +490,11 @@ export default function VideoMeetComponent() {
     } catch (e) {
       console.error("Error ending call:", e);
     }
-    window.location.href = "/";
+    if (localStorage.getItem("token")) {
+      window.location.href = "/home";
+    } else {
+      window.location.href = "/";
+    }
   };
 
   const openChat = () => {
@@ -565,14 +571,20 @@ export default function VideoMeetComponent() {
           <div className={styles.lobbyCard}>
             <h2>⚡ Join Meeting</h2>
             <video ref={localVideoref} autoPlay muted />
-            <input
-              id="lobby-username"
-              className={styles.lobbyInput}
-              placeholder="Enter your name…"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && connect()}
-            />
+            {localStorage.getItem("token") ? (
+              <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem", marginBlock: "6px" }}>
+                Joining as: <strong style={{ color: "var(--text-primary)" }}>{username}</strong>
+              </p>
+            ) : (
+              <input
+                id="lobby-username"
+                className={styles.lobbyInput}
+                placeholder="Enter your name…"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && connect()}
+              />
+            )}
             <button className={styles.lobbyConnectBtn} onClick={connect}>
               Join Call →
             </button>

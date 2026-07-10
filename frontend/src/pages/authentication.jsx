@@ -21,6 +21,12 @@ export default function Authentication() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (localStorage.getItem("token")) {
+      navigate("/home");
+    }
+  }, [navigate]);
+
+  useEffect(() => {
     if (showSnack) {
       const t = setTimeout(() => setShowSnack(false), 3500);
       return () => clearTimeout(t);
