@@ -4,6 +4,7 @@ import "../App.css";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import CloseIcon from "@mui/icons-material/Close";
 import { AuthContext } from "../contexts/AuthContext";
 
 export default function Authentication() {
@@ -73,6 +74,13 @@ export default function Authentication() {
         >
           ⚡ Zoomify
         </span>
+        <button
+          className="authCloseBtn"
+          onClick={() => navigate("/")}
+          title="Back to home"
+        >
+          <CloseIcon style={{ fontSize: "1.2rem" }} />
+        </button>
       </nav>
 
       {/* Card */}

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import { Badge, IconButton } from "@mui/material";
 import VideocamIcon from "@mui/icons-material/Videocam";
@@ -29,6 +30,7 @@ const peerConfigConnections = {
 };
 
 export default function VideoMeetComponent() {
+  const navigate = useNavigate();
   const socketRef = useRef();
   const socketIdRef = useRef();
   const localVideoref = useRef();
@@ -44,7 +46,7 @@ export default function VideoMeetComponent() {
   const [screenAvailable, setScreenAvailable] = useState(false);
   const [showModal, setModal] = useState(false);
   const [messages, setMessages] = useState([]);
-  const [message, setMessage] = useState("");
+  const chatInputRef = useRef("");
   const [newMessages, setNewMessages] = useState(0);
   const [askForUsername, setAskForUsername] = useState(true);
   const [username, setUsername] = useState(() => {
@@ -526,9 +528,9 @@ export default function VideoMeetComponent() {
       console.error("Error ending call:", e);
     }
     if (localStorage.getItem("token")) {
-      window.location.href = "/home";
+      navigate("/home");
     } else {
-      window.location.href = "/";
+      navigate("/");
     }
   };
 
@@ -537,7 +539,7 @@ export default function VideoMeetComponent() {
     if (newMessages > 0) setNewMessages(0);
   };
 
-  const handleMessage = (e) => setMessage(e.target.value);
+  // Chat input uses a ref to avoid re-rendering all videos on each keystroke
 
   const addMessage = (data, sender, socketIdSender) => {
     setMessages((prev) => [...prev, { sender, data }]);
@@ -547,9 +549,12 @@ export default function VideoMeetComponent() {
   };
 
   const sendMessage = () => {
-    if (message.trim()) {
-      socketRef.current.emit("chat-message", message, username);
-      setMessage("");
+    const msg = chatInputRef.current;
+    if (msg.trim()) {
+      socketRef.current.emit("chat-message", msg, username);
+      chatInputRef.current = "";
+      const inputEl = document.getElementById("chat-input");
+      if (inputEl) inputEl.value = "";
     }
   };
 
@@ -646,8 +651,8 @@ export default function VideoMeetComponent() {
                 </div>
                 <div className={styles.chattingArea}>
                   <input
-                    value={message}
-                    onChange={handleMessage}
+                    defaultValue=""
+                    onChange={(e) => { chatInputRef.current = e.target.value; }}
                     id="chat-input"
                     placeholder="Type a message…"
                     onKeyDown={(e) => e.key === "Enter" && sendMessage()}

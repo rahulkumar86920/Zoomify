@@ -18,18 +18,20 @@ app.use(express.urlencoded({ limit: "40kb", extended: true }));
 app.use("/api/v1/users", userRoutes);
 
 const start = async () => {
-  app.set("mongo_user");
-  const connectionDb = await mongoose.connect(
-    "mongodb+srv://rahulkumar:Rahul150%40@cluster0.ghbafb3.mongodb.net/zoomify"
-  );
-  
+  try {
+    const connectionDb = await mongoose.connect(
+      "mongodb+srv://rahulkumar:Rahul150%40@cluster0.ghbafb3.mongodb.net/zoomify"
+    );
 
-  console.log(`Connected to DB: ${mongoose.connection.name}`);
+    console.log("Connected!");
+    console.log(connectionDb.connection.host);
 
-  console.log(`MONGO Connected DB Host: ${connectionDb.connection.host}`);
-  server.listen(app.get("port"), () => {
-    console.log("LISTENIN ON PORT 3000");
-  });
+    server.listen(3000, () => {
+      console.log("Listening on port 3000");
+    });
+  } catch (err) {
+    console.error(err);
+  }
 };
 
 start();
