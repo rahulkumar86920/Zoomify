@@ -9,6 +9,10 @@ import MicOffIcon from "@mui/icons-material/MicOff";
 import ScreenShareIcon from "@mui/icons-material/ScreenShare";
 import StopScreenShareIcon from "@mui/icons-material/StopScreenShare";
 import ChatIcon from "@mui/icons-material/Chat";
+import FullscreenIcon from "@mui/icons-material/Fullscreen";
+import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
+import CloseIcon from "@mui/icons-material/Close";
+import PersonIcon from "@mui/icons-material/Person";
 import styles from "../styles/videoComponent.module.css";
 import server from "../environment";
 
@@ -37,6 +41,11 @@ export default function VideoMeetComponent() {
   const [askForUsername, setAskForUsername] = useState(true);
   const [username, setUsername] = useState("");
   const [videos, setVideos] = useState([]);
+
+  // Fullscreen overlay state
+  const [fullscreenVideo, setFullscreenVideo] = useState(null);
+  // { stream, label, isScreen }
+  const fullscreenVideoRef = useRef(null);
 
   const connections = useRef({}).current;
 
@@ -503,6 +512,29 @@ export default function VideoMeetComponent() {
     connectToSocketServer();
   };
 
+  // ── Fullscreen helpers ──────────────────────────────────────
+  const openFullscreen = (stream, label = "Participant", isScreen = false) => {
+    setFullscreenVideo({ stream, label, isScreen });
+  };
+
+  const closeFullscreen = () => {
+    setFullscreenVideo(null);
+  };
+
+  // Assign stream to the fullscreen video element whenever it changes
+  useEffect(() => {
+    if (fullscreenVideoRef.current && fullscreenVideo?.stream) {
+      fullscreenVideoRef.current.srcObject = fullscreenVideo.stream;
+    }
+  }, [fullscreenVideo]);
+
+  // Close fullscreen on Escape key
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") closeFullscreen(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <div>
       {askForUsername ? (
@@ -576,28 +608,102 @@ export default function VideoMeetComponent() {
               </IconButton>
             </Badge>
           </div>
-          <video
-            className={styles.meetUserVideo}
-            ref={localVideoref}
-            autoPlay
-            muted
-          ></video>
+          {/* ── Local (self) video with expand button ── */}
+          <div className={styles.localVideoWrapper}>
+            <video
+              className={styles.meetUserVideo}
+              ref={localVideoref}
+              autoPlay
+              muted
+            ></video>
+            <button
+              className={styles.localExpandBtn}
+              title="View fullscreen"
+              onClick={() =>
+                openFullscreen(
+                  window.localStream,
+                  screen ? "Your Screen Share" : "You",
+                  screen
+                )
+              }
+            >
+              <FullscreenIcon style={{ fontSize: "1.1rem" }} />
+            </button>
+          </div>
+
+          {/* ── Remote videos grid ── */}
           <div className={styles.conferenceView}>
-            {videos.map((video) => (
-              <div key={video.socketId}>
+            {videos.map((vid) => (
+              <div key={vid.socketId} className={styles.videoWrapper}>
                 <video
-                  data-socket={video.socketId}
+                  data-socket={vid.socketId}
                   ref={(ref) => {
-                    if (ref && video.stream) {
-                      ref.srcObject = video.stream;
+                    if (ref && vid.stream) {
+                      ref.srcObject = vid.stream;
                     }
                   }}
                   autoPlay
                   playsInline
                 ></video>
+                {/* Expand button on each remote tile */}
+                <button
+                  className={styles.expandBtn}
+                  title="View fullscreen"
+                  onClick={() => openFullscreen(vid.stream, "Participant", false)}
+                >
+                  <FullscreenIcon style={{ fontSize: "1.2rem" }} />
+                </button>
               </div>
             ))}
           </div>
+
+          {/* ── Fullscreen overlay (WhatsApp-style) ── */}
+          {fullscreenVideo && (
+            <div
+              className={styles.fullscreenOverlay}
+              onClick={(e) => {
+                // close when clicking the dark backdrop (not the video)
+                if (e.target === e.currentTarget) closeFullscreen();
+              }}
+            >
+              <div className={styles.fullscreenVideoContainer}>
+                {/* Top bar */}
+                <div className={styles.fullscreenTopBar}>
+                  <span className={styles.fullscreenLabel}>
+                    {fullscreenVideo.isScreen ? (
+                      <>
+                        <ScreenShareIcon />
+                        <span className={styles.screenShareBadge}>
+                          Screen Share
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <PersonIcon />
+                        {fullscreenVideo.label}
+                      </>
+                    )}
+                  </span>
+                  <button
+                    className={styles.closeFullscreenBtn}
+                    onClick={closeFullscreen}
+                    title="Exit fullscreen (Esc)"
+                  >
+                    <CloseIcon style={{ fontSize: "1.3rem" }} />
+                  </button>
+                </div>
+
+                {/* The full-size video */}
+                <video
+                  className={styles.fullscreenVideo}
+                  ref={fullscreenVideoRef}
+                  autoPlay
+                  playsInline
+                  muted={fullscreenVideo.label === "You" || fullscreenVideo.label === "Your Screen Share"}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

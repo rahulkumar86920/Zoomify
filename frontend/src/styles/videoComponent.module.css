@@ -5,15 +5,54 @@
     overflow: hidden;
 }
 
-/* Your own video at corner */
-.meetUserVideo {
+/* Your own video at corner — wrapped for hover expand button */
+.localVideoWrapper {
     position: absolute;
     bottom: 12vh;
     left: 10px;
+    z-index: 2;
+}
+
+.meetUserVideo {
     height: 20vh;
     width: auto;
     border-radius: 12px;
-    z-index: 2;
+    display: block;
+    transition: box-shadow 0.2s ease;
+    cursor: pointer;
+}
+
+.localVideoWrapper:hover .meetUserVideo {
+    box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.7);
+}
+
+/* Expand button visible on hover */
+.localExpandBtn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(0, 0, 0, 0.6);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    opacity: 0;
+    transition: opacity 0.2s ease, background 0.2s ease, transform 0.15s ease;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+}
+
+.localVideoWrapper:hover .localExpandBtn {
+    opacity: 1;
+}
+
+.localExpandBtn:hover {
+    background: rgba(99, 179, 237, 0.85);
+    transform: scale(1.1);
 }
 
 /* Buttons row at bottom */
@@ -24,17 +63,12 @@
     text-align: center;
     z-index: 3;
     bottom: 8vh;
-
-}
-.buttonContainers:hover{
-
 }
 
 .buttonContainers svg {
     font-size: 2.5rem;
     color: white;
     margin: 0 10px;
-   
 }
 
 /* All videos including remote */
@@ -47,12 +81,158 @@
     margin-top: 10px;
 }
 
+/* Wrapper for each remote video tile */
+.videoWrapper {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    max-width: 360px;
+    width: 100%;
+    background: #0a0e2e;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.videoWrapper:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 32px rgba(99, 179, 237, 0.3);
+}
+
 .conferenceView video {
     width: 100%;
-    max-width: 360px;
     height: auto;
-    border-radius: 10px;
+    border-radius: 0;
     object-fit: cover;
+    display: block;
+}
+
+/* Expand button on remote video tile */
+.expandBtn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    opacity: 0;
+    transition: opacity 0.2s ease, background 0.2s ease, transform 0.15s ease;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+}
+
+.videoWrapper:hover .expandBtn {
+    opacity: 1;
+}
+
+.expandBtn:hover {
+    background: rgba(99, 179, 237, 0.85);
+    transform: scale(1.1);
+}
+
+/* ============================================================
+   FULLSCREEN OVERLAY  (WhatsApp-style)
+   ============================================================ */
+.fullscreenOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.96);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeInOverlay 0.2s ease;
+}
+
+@keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.fullscreenVideoContainer {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fullscreenVideo {
+    max-width: 100vw;
+    max-height: 100vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Top gradient bar */
+.fullscreenTopBar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.75) 0%, transparent 100%);
+    z-index: 10;
+}
+
+.fullscreenLabel {
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 0.2px;
+}
+
+.fullscreenLabel svg {
+    font-size: 1.3rem;
+    color: #63b3ed;
+}
+
+/* Screen-share pill badge */
+.screenShareBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(99, 179, 237, 0.18);
+    border: 1px solid rgba(99, 179, 237, 0.45);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.78rem;
+    color: #63b3ed;
+    font-weight: 500;
+}
+
+/* Close (×) button */
+.closeFullscreenBtn {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    transition: background 0.2s ease, transform 0.15s ease;
+    backdrop-filter: blur(6px);
+}
+
+.closeFullscreenBtn:hover {
+    background: rgba(255, 70, 70, 0.75);
+    transform: scale(1.08);
 }
 
 /* Chat box */
@@ -85,14 +265,22 @@
         align-items: center;
     }
 
+    .videoWrapper {
+        max-width: 90vw;
+        width: 90vw;
+    }
+
     .conferenceView video {
         width: 90vw;
         height: auto;
     }
 
     .meetUserVideo {
-        width: 100px;
         height: auto;
+        width: 100px;
+    }
+
+    .localVideoWrapper {
         bottom: 100px;
         left: 10px;
     }
@@ -103,20 +291,20 @@
         padding: 10px 0;
     }
 
-     .chatRoom {
-    position: fixed;
-    bottom: 20vh; /* leaves space for buttons */
-    right: 0;
-    width: 100vw;
-    height: 60vh;
-    background: white;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-    z-index: 1000;
-    overflow-y: auto;
-  }
+    .chatRoom {
+        position: fixed;
+        bottom: 20vh;
+        right: 0;
+        width: 100vw;
+        height: 60vh;
+        background: white;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+        z-index: 1000;
+        overflow-y: auto;
+    }
 
-  .buttonContainers {
-    z-index: 1100; /* Ensure buttons are always on top */
-  }
+    .buttonContainers {
+        z-index: 1100;
+    }
 }
