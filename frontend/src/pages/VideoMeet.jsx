@@ -258,10 +258,64 @@ export default function VideoMeetComponent() {
     });
   };
 
+  const createPeerConnection = (fromId) => {
+    connections[fromId] = new RTCPeerConnection(peerConfigConnections);
+
+    connections[fromId].onicecandidate = (event) => {
+      if (event.candidate) {
+        socketRef.current.emit(
+          "signal",
+          fromId,
+          JSON.stringify({ ice: event.candidate })
+        );
+      }
+    };
+
+    connections[fromId].onaddstream = (event) => {
+      const videoExists = videoRef.current.find(
+        (video) => video.socketId === fromId
+      );
+
+      if (videoExists) {
+        setVideos((videos) =>
+          videos.map((video) =>
+            video.socketId === fromId
+              ? { ...video, stream: event.stream }
+              : video
+          )
+        );
+      } else {
+        const newVideo = {
+          socketId: fromId,
+          stream: event.stream,
+          autoplay: true,
+          playsinline: true,
+        };
+        setVideos((videos) => {
+          const updatedVideos = [...videos, newVideo];
+          videoRef.current = updatedVideos;
+          return updatedVideos;
+        });
+      }
+    };
+
+    if (window.localStream) {
+      connections[fromId].addStream(window.localStream);
+    } else {
+      window.localStream = new MediaStream([black(), silence()]);
+      connections[fromId].addStream(window.localStream);
+    }
+  };
+
   const gotMessageFromServer = (fromId, message) => {
     const signal = JSON.parse(message);
 
     if (fromId !== socketIdRef.current) {
+      // Dynamic on-demand connection setup to prevent race conditions
+      if (!connections[fromId]) {
+        createPeerConnection(fromId);
+      }
+
       if (signal.sdp) {
         connections[fromId]
           .setRemoteDescription(new RTCSessionDescription(signal.sdp))
@@ -337,52 +391,7 @@ export default function VideoMeetComponent() {
           if (socketListId === socketIdRef.current) return;
           if (connections[socketListId]) return;
 
-          connections[socketListId] = new RTCPeerConnection(peerConfigConnections);
-
-          connections[socketListId].onicecandidate = (event) => {
-            if (event.candidate) {
-              socketRef.current.emit(
-                "signal",
-                socketListId,
-                JSON.stringify({ ice: event.candidate })
-              );
-            }
-          };
-
-          connections[socketListId].onaddstream = (event) => {
-            const videoExists = videoRef.current.find(
-              (video) => video.socketId === socketListId
-            );
-
-            if (videoExists) {
-              setVideos((videos) =>
-                videos.map((video) =>
-                  video.socketId === socketListId
-                    ? { ...video, stream: event.stream }
-                    : video
-                )
-              );
-            } else {
-              const newVideo = {
-                socketId: socketListId,
-                stream: event.stream,
-                autoplay: true,
-                playsinline: true,
-              };
-              setVideos((videos) => {
-                const updatedVideos = [...videos, newVideo];
-                videoRef.current = updatedVideos;
-                return updatedVideos;
-              });
-            }
-          };
-
-          if (window.localStream) {
-            connections[socketListId].addStream(window.localStream);
-          } else {
-            window.localStream = new MediaStream([black(), silence()]);
-            connections[socketListId].addStream(window.localStream);
-          }
+          createPeerConnection(socketListId);
         });
 
         if (id === socketIdRef.current) {
