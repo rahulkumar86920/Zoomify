@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import { Badge, IconButton, TextField, Button } from "@mui/material";
 import VideocamIcon from "@mui/icons-material/Videocam";
@@ -10,7 +10,6 @@ import ScreenShareIcon from "@mui/icons-material/ScreenShare";
 import StopScreenShareIcon from "@mui/icons-material/StopScreenShare";
 import ChatIcon from "@mui/icons-material/Chat";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
-import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import CloseIcon from "@mui/icons-material/Close";
 import PersonIcon from "@mui/icons-material/Person";
 import styles from "../styles/videoComponent.module.css";
@@ -42,20 +41,15 @@ export default function VideoMeetComponent() {
   const [username, setUsername] = useState("");
   const [videos, setVideos] = useState([]);
 
-  // Fullscreen overlay state
+  // Fullscreen overlay: { stream, label, isScreen }
   const [fullscreenVideo, setFullscreenVideo] = useState(null);
-  // { stream, label, isScreen }
-  const fullscreenVideoRef = useRef(null);
 
   const connections = useRef({}).current;
 
+  // ── Permissions ──────────────────────────────────────────────
   useEffect(() => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert(
-        "Your browser does not support WebRTC. Please use a compatible browser like Chrome, Firefox, or Edge."
-      );
-      setVideoAvailable(false);
-      setAudioAvailable(false);
+      alert("Your browser does not support WebRTC. Please use Chrome, Firefox, or Edge.");
       return;
     }
     getPermissions();
@@ -77,9 +71,6 @@ export default function VideoMeetComponent() {
         setVideo(videoTracks.length > 0);
         setAudio(audioTracks.length > 0);
 
-        console.log("Video permission granted:", videoTracks.length > 0);
-        console.log("Audio permission granted:", audioTracks.length > 0);
-
         window.localStream = userMediaStream;
         if (localVideoref.current) {
           localVideoref.current.srcObject = userMediaStream;
@@ -87,9 +78,6 @@ export default function VideoMeetComponent() {
       } else {
         setVideoAvailable(false);
         setAudioAvailable(false);
-        alert(
-          "Unable to access camera or microphone. Please check permissions."
-        );
       }
 
       setScreenAvailable(!!navigator.mediaDevices.getDisplayMedia);
@@ -97,9 +85,7 @@ export default function VideoMeetComponent() {
       console.error("Error accessing media devices:", error);
       setVideoAvailable(false);
       setAudioAvailable(false);
-      alert(
-        "Failed to access camera or microphone. Please ensure they are available and permissions are granted."
-      );
+      alert("Failed to access camera or microphone. Please check permissions.");
     }
   };
 
@@ -111,9 +97,48 @@ export default function VideoMeetComponent() {
 
   useEffect(() => {
     if (screen !== undefined && screenAvailable) {
-      getDisplayMedia();
+      if (screen) {
+        getDisplayMedia();
+      } else {
+        // Screen sharing was turned off — restore camera stream
+        switchBackToCamera();
+      }
     }
   }, [screen]);
+
+  // ── Replace tracks across all peer connections ───────────────
+  // Uses replaceTrack (modern) instead of addStream (deprecated).
+  // This is the key fix: avoids broken PeerConnection state that
+  // prevented other participants from sharing after one person stopped.
+  const replaceTracksInConnections = (newStream) => {
+    for (const id in connections) {
+      if (id === socketIdRef.current) continue;
+      const senders = connections[id].getSenders();
+      newStream.getTracks().forEach((newTrack) => {
+        const sender = senders.find(
+          (s) => s.track && s.track.kind === newTrack.kind
+        );
+        if (sender) {
+          sender.replaceTrack(newTrack).catch((e) =>
+            console.error("replaceTrack error:", e)
+          );
+        } else {
+          connections[id].addTrack(newTrack, newStream);
+          connections[id]
+            .createOffer()
+            .then((desc) => connections[id].setLocalDescription(desc))
+            .then(() =>
+              socketRef.current.emit(
+                "signal",
+                id,
+                JSON.stringify({ sdp: connections[id].localDescription })
+              )
+            )
+            .catch((e) => console.error("renegotiation error:", e));
+        }
+      });
+    }
+  };
 
   const getUserMedia = async () => {
     if ((video && videoAvailable) || (audio && audioAvailable)) {
@@ -125,14 +150,12 @@ export default function VideoMeetComponent() {
         getUserMediaSuccess(stream);
       } catch (e) {
         console.error("getUserMedia error:", e);
-        alert(
-          "Failed to access camera or microphone. Please check permissions or device availability."
-        );
+        alert("Failed to access camera or microphone.");
       }
     } else {
       try {
         if (window.localStream) {
-          window.localStream.getTracks().forEach((track) => track.stop());
+          window.localStream.getTracks().forEach((t) => t.stop());
           window.localStream = null;
         }
         if (localVideoref.current) {
@@ -145,25 +168,51 @@ export default function VideoMeetComponent() {
   };
 
   const getDisplayMedia = async () => {
-    if (screen && screenAvailable) {
-      try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
-          audio: true,
-        });
-        getDisplayMediaSuccess(stream);
-      } catch (e) {
-        console.error("getDisplayMedia error:", e);
-        setScreen(false);
-        alert("Failed to start screen sharing. Please try again.");
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true,
+      });
+      getDisplayMediaSuccess(stream);
+    } catch (e) {
+      console.error("getDisplayMedia error:", e);
+      // Cancelled or failed — revert toggle without re-triggering effect
+      setScreen(false);
+    }
+  };
+
+  // Restores camera/mic after screen sharing stops
+  const switchBackToCamera = async () => {
+    try {
+      if (window.localStream) {
+        window.localStream.getTracks().forEach((t) => t.stop());
+        window.localStream = null;
       }
+      if (localVideoref.current) {
+        localVideoref.current.srcObject = null;
+      }
+
+      if ((video && videoAvailable) || (audio && audioAvailable)) {
+        const camStream = await navigator.mediaDevices.getUserMedia({
+          video: video && videoAvailable,
+          audio: audio && audioAvailable,
+        });
+        window.localStream = camStream;
+        if (localVideoref.current) {
+          localVideoref.current.srcObject = camStream;
+        }
+        // Properly replace tracks so other peers get camera back
+        replaceTracksInConnections(camStream);
+      }
+    } catch (e) {
+      console.error("switchBackToCamera error:", e);
     }
   };
 
   const getUserMediaSuccess = (stream) => {
     try {
       if (window.localStream) {
-        window.localStream.getTracks().forEach((track) => track.stop());
+        window.localStream.getTracks().forEach((t) => t.stop());
       }
     } catch (e) {
       console.error("Error stopping previous tracks:", e);
@@ -172,72 +221,17 @@ export default function VideoMeetComponent() {
     window.localStream = stream;
     if (localVideoref.current) {
       localVideoref.current.srcObject = stream;
-      console.log(
-        "Local video stream assigned:",
-        stream.getVideoTracks().length > 0
-      );
     }
 
-    for (let id in connections) {
-      if (id === socketIdRef.current) continue;
-      connections[id].addStream(window.localStream);
-      connections[id]
-        .createOffer()
-        .then((description) => {
-          connections[id]
-            .setLocalDescription(description)
-            .then(() => {
-              socketRef.current.emit(
-                "signal",
-                id,
-                JSON.stringify({ sdp: connections[id].localDescription })
-              );
-            })
-            .catch((e) => console.error("Error setting offer:", e));
-        })
-        .catch((e) => console.error("Error creating offer:", e));
+    if (Object.keys(connections).length > 0) {
+      replaceTracksInConnections(stream);
     }
-
-    stream.getTracks().forEach((track) => {
-      track.onended = () => {
-        setVideo(false);
-        setAudio(false);
-        try {
-          let tracks = localVideoref.current?.srcObject?.getTracks() || [];
-          tracks.forEach((track) => track.stop());
-          localVideoref.current.srcObject = null;
-        } catch (e) {
-          console.error("Error stopping tracks on end:", e);
-        }
-        window.localStream = new MediaStream([black(), silence()]);
-        localVideoref.current.srcObject = window.localStream;
-
-        for (let id in connections) {
-          connections[id].addStream(window.localStream);
-          connections[id]
-            .createOffer()
-            .then((description) => {
-              connections[id]
-                .setLocalDescription(description)
-                .then(() => {
-                  socketRef.current.emit(
-                    "signal",
-                    id,
-                    JSON.stringify({ sdp: connections[id].localDescription })
-                  );
-                })
-                .catch((e) => console.error("Error setting offer:", e));
-            })
-            .catch((e) => console.error("Error creating offer:", e));
-        }
-      };
-    });
   };
 
   const getDisplayMediaSuccess = (stream) => {
     try {
       if (window.localStream) {
-        window.localStream.getTracks().forEach((track) => track.stop());
+        window.localStream.getTracks().forEach((t) => t.stop());
       }
     } catch (e) {
       console.error("Error stopping previous tracks:", e);
@@ -248,37 +242,17 @@ export default function VideoMeetComponent() {
       localVideoref.current.srcObject = stream;
     }
 
-    for (let id in connections) {
-      if (id === socketIdRef.current) continue;
-      connections[id].addStream(window.localStream);
-      connections[id]
-        .createOffer()
-        .then((description) => {
-          connections[id]
-            .setLocalDescription(description)
-            .then(() => {
-              socketRef.current.emit(
-                "signal",
-                id,
-                JSON.stringify({ sdp: connections[id].localDescription })
-              );
-            })
-            .catch((e) => console.error("Error setting offer:", e));
-        })
-        .catch((e) => console.error("Error creating offer:", e));
+    if (Object.keys(connections).length > 0) {
+      replaceTracksInConnections(stream);
     }
 
-    stream.getTracks().forEach((track) => {
+    // When browser/OS "Stop sharing" button is pressed, sync React state
+    stream.getVideoTracks().forEach((track) => {
       track.onended = () => {
-        setScreen(false);
-        try {
-          let tracks = localVideoref.current?.srcObject?.getTracks() || [];
-          tracks.forEach((track) => track.stop());
-          localVideoref.current.srcObject = null;
-        } catch (e) {
-          console.error("Error stopping tracks on end:", e);
+        setScreen(false); // triggers switchBackToCamera via useEffect
+        if (socketRef.current) {
+          socketRef.current.emit("screen-toggle", false);
         }
-        getUserMedia();
       };
     });
   };
@@ -301,9 +275,7 @@ export default function VideoMeetComponent() {
                       socketRef.current.emit(
                         "signal",
                         fromId,
-                        JSON.stringify({
-                          sdp: connections[fromId].localDescription,
-                        })
+                        JSON.stringify({ sdp: connections[fromId].localDescription })
                       );
                     })
                     .catch((e) => console.error("Error setting answer:", e));
@@ -334,14 +306,20 @@ export default function VideoMeetComponent() {
       socketRef.current.on("chat-message", addMessage);
 
       socketRef.current.on("user-left", (id) => {
-        setVideos((videos) => videos.filter((video) => video.socketId !== id));
+        setVideos((videos) => videos.filter((v) => v.socketId !== id));
+        if (connections[id]) {
+          try { connections[id].close(); } catch (_) {}
+          delete connections[id];
+        }
       });
 
       socketRef.current.on("user-joined", (id, clients) => {
         clients.forEach((socketListId) => {
-          connections[socketListId] = new RTCPeerConnection(
-            peerConfigConnections
-          );
+          // Skip if connection already exists for this peer
+          if (connections[socketListId]) return;
+
+          connections[socketListId] = new RTCPeerConnection(peerConfigConnections);
+
           connections[socketListId].onicecandidate = (event) => {
             if (event.candidate) {
               socketRef.current.emit(
@@ -352,50 +330,55 @@ export default function VideoMeetComponent() {
             }
           };
 
-          connections[socketListId].onaddstream = (event) => {
+          // ontrack is the modern replacement for onaddstream
+          connections[socketListId].ontrack = (event) => {
+            const incomingStream = event.streams[0];
+            if (!incomingStream) return;
+
             const videoExists = videoRef.current.find(
-              (video) => video.socketId === socketListId
+              (v) => v.socketId === socketListId
             );
 
             if (videoExists) {
               setVideos((videos) =>
-                videos.map((video) =>
-                  video.socketId === socketListId
-                    ? { ...video, stream: event.stream }
-                    : video
+                videos.map((v) =>
+                  v.socketId === socketListId
+                    ? { ...v, stream: incomingStream }
+                    : v
                 )
               );
             } else {
               const newVideo = {
                 socketId: socketListId,
-                stream: event.stream,
+                stream: incomingStream,
                 autoplay: true,
                 playsinline: true,
               };
               setVideos((videos) => {
-                const updatedVideos = [...videos, newVideo];
-                videoRef.current = updatedVideos;
-                return updatedVideos;
+                const updated = [...videos, newVideo];
+                videoRef.current = updated;
+                return updated;
               });
             }
           };
 
+          // Add tracks (modern API) instead of addStream
           if (window.localStream) {
-            connections[socketListId].addStream(window.localStream);
+            window.localStream.getTracks().forEach((track) => {
+              connections[socketListId].addTrack(track, window.localStream);
+            });
           } else {
-            window.localStream = new MediaStream([black(), silence()]);
-            connections[socketListId].addStream(window.localStream);
+            const blankStream = new MediaStream([black(), silence()]);
+            window.localStream = blankStream;
+            blankStream.getTracks().forEach((track) => {
+              connections[socketListId].addTrack(track, blankStream);
+            });
           }
         });
 
         if (id === socketIdRef.current) {
-          for (let id2 in connections) {
+          for (const id2 in connections) {
             if (id2 === socketIdRef.current) continue;
-            try {
-              connections[id2].addStream(window.localStream);
-            } catch (e) {
-              console.error("Error adding stream to connection:", e);
-            }
             connections[id2]
               .createOffer()
               .then((description) => {
@@ -427,21 +410,19 @@ export default function VideoMeetComponent() {
   };
 
   const black = ({ width = 640, height = 480 } = {}) => {
-    const canvas = Object.assign(document.createElement("canvas"), {
-      width,
-      height,
-    });
+    const canvas = Object.assign(document.createElement("canvas"), { width, height });
     canvas.getContext("2d").fillRect(0, 0, width, height);
     const stream = canvas.captureStream();
     return Object.assign(stream.getVideoTracks()[0], { enabled: false });
   };
 
+  // ── Controls ─────────────────────────────────────────────────
   const handleVideo = () => {
     if (!videoAvailable) {
       alert("Camera is not available or permission was denied.");
       return;
     }
-    setVideo(!video);
+    setVideo((v) => !v);
   };
 
   const handleAudio = () => {
@@ -449,7 +430,7 @@ export default function VideoMeetComponent() {
       alert("Microphone is not available or permission was denied.");
       return;
     }
-    setAudio(!audio);
+    setAudio((a) => !a);
   };
 
   const handleScreen = () => {
@@ -457,17 +438,26 @@ export default function VideoMeetComponent() {
       alert("Screen sharing is not supported in this browser.");
       return;
     }
-    setScreen(!screen);
+    const next = !screen;
+    setScreen(next);
+    // Notify peers immediately so their UI can show "sharing" badge
+    if (socketRef.current) {
+      socketRef.current.emit("screen-toggle", next);
+    }
   };
 
   const handleEndCall = () => {
     try {
       if (window.localStream) {
-        window.localStream.getTracks().forEach((track) => track.stop());
+        window.localStream.getTracks().forEach((t) => t.stop());
         window.localStream = null;
       }
       if (localVideoref.current) {
         localVideoref.current.srcObject = null;
+      }
+      for (const id in connections) {
+        try { connections[id].close(); } catch (_) {}
+        delete connections[id];
       }
     } catch (e) {
       console.error("Error ending call:", e);
@@ -475,22 +465,15 @@ export default function VideoMeetComponent() {
     window.location.href = "/";
   };
 
-  //this is for to open and close the chat screem
   const openChat = () => {
-    setModal((prev) => !prev); // toggle the modal
+    setModal((prev) => !prev);
     if (newMessages > 0) setNewMessages(0);
   };
 
-  const closeChat = () => {
-    setModal(false);
-  };
-
-  const handleMessage = (e) => {
-    setMessage(e.target.value);
-  };
+  const handleMessage = (e) => setMessage(e.target.value);
 
   const addMessage = (data, sender, socketIdSender) => {
-    setMessages((prevMessages) => [...prevMessages, { sender, data }]);
+    setMessages((prev) => [...prev, { sender, data }]);
     if (socketIdSender !== socketIdRef.current) {
       setNewMessages((prev) => prev + 1);
     }
@@ -512,29 +495,35 @@ export default function VideoMeetComponent() {
     connectToSocketServer();
   };
 
-  // ── Fullscreen helpers ──────────────────────────────────────
+  // ── Fullscreen helpers ────────────────────────────────────────
   const openFullscreen = (stream, label = "Participant", isScreen = false) => {
     setFullscreenVideo({ stream, label, isScreen });
   };
 
-  const closeFullscreen = () => {
+  const closeFullscreen = useCallback(() => {
     setFullscreenVideo(null);
-  };
+  }, []);
 
-  // Assign stream to the fullscreen video element whenever it changes
-  useEffect(() => {
-    if (fullscreenVideoRef.current && fullscreenVideo?.stream) {
-      fullscreenVideoRef.current.srcObject = fullscreenVideo.stream;
-    }
-  }, [fullscreenVideo]);
-
-  // Close fullscreen on Escape key
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") closeFullscreen(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [closeFullscreen]);
 
+  // ── KEY FIX: callback ref that assigns srcObject the instant the
+  //    fullscreen <video> mounts. Avoids the blank-video bug caused by
+  //    useEffect running after the browser paint cycle.
+  const fullscreenVideoCallbackRef = useCallback(
+    (node) => {
+      if (node && fullscreenVideo?.stream) {
+        node.srcObject = fullscreenVideo.stream;
+        node.play().catch(() => {});
+      }
+    },
+    [fullscreenVideo]
+  );
+
+  // ── Render ────────────────────────────────────────────────────
   return (
     <div>
       {askForUsername ? (
@@ -546,6 +535,7 @@ export default function VideoMeetComponent() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             variant="outlined"
+            onKeyDown={(e) => e.key === "Enter" && connect()}
           />
           <Button variant="contained" onClick={connect}>
             Connect
@@ -556,6 +546,7 @@ export default function VideoMeetComponent() {
         </div>
       ) : (
         <div className={styles.meetVideoContainer}>
+          {/* ── Chat panel ── */}
           {showModal && (
             <div className={styles.chatRoom}>
               <div className={styles.chatContainer}>
@@ -576,9 +567,10 @@ export default function VideoMeetComponent() {
                   <TextField
                     value={message}
                     onChange={handleMessage}
-                    id="outlined-basic"
+                    id="chat-input"
                     label="Enter Your Chat"
                     variant="outlined"
+                    onKeyDown={(e) => e.key === "Enter" && sendMessage()}
                   />
                   <Button variant="contained" onClick={sendMessage}>
                     Send
@@ -587,6 +579,8 @@ export default function VideoMeetComponent() {
               </div>
             </div>
           )}
+
+          {/* ── Control buttons ── */}
           <div className={styles.buttonContainers}>
             <IconButton onClick={handleVideo} style={{ color: "white" }}>
               {video ? <VideocamIcon /> : <VideocamOffIcon />}
@@ -598,17 +592,22 @@ export default function VideoMeetComponent() {
               {audio ? <MicIcon /> : <MicOffIcon />}
             </IconButton>
             {screenAvailable && (
-              <IconButton onClick={handleScreen} style={{ color: "white" }}>
-                {screen ? <ScreenShareIcon /> : <StopScreenShareIcon />}
+              <IconButton
+                onClick={handleScreen}
+                style={{ color: screen ? "#63b3ed" : "white" }}
+                title={screen ? "Stop screen sharing" : "Share screen"}
+              >
+                {screen ? <StopScreenShareIcon /> : <ScreenShareIcon />}
               </IconButton>
             )}
-            <Badge badgeContent={newMessages} max={999} color="orange">
+            <Badge badgeContent={newMessages} max={999} color="error">
               <IconButton onClick={openChat} style={{ color: "white" }}>
                 <ChatIcon />
               </IconButton>
             </Badge>
           </div>
-          {/* ── Local (self) video with expand button ── */}
+
+          {/* ── Local (self) video ── */}
           <div className={styles.localVideoWrapper}>
             <video
               className={styles.meetUserVideo}
@@ -645,7 +644,6 @@ export default function VideoMeetComponent() {
                   autoPlay
                   playsInline
                 ></video>
-                {/* Expand button on each remote tile */}
                 <button
                   className={styles.expandBtn}
                   title="View fullscreen"
@@ -657,17 +655,16 @@ export default function VideoMeetComponent() {
             ))}
           </div>
 
-          {/* ── Fullscreen overlay (WhatsApp-style) ── */}
+          {/* ── Fullscreen overlay ── */}
           {fullscreenVideo && (
             <div
               className={styles.fullscreenOverlay}
               onClick={(e) => {
-                // close when clicking the dark backdrop (not the video)
                 if (e.target === e.currentTarget) closeFullscreen();
               }}
             >
               <div className={styles.fullscreenVideoContainer}>
-                {/* Top bar */}
+                {/* Top gradient bar */}
                 <div className={styles.fullscreenTopBar}>
                   <span className={styles.fullscreenLabel}>
                     {fullscreenVideo.isScreen ? (
@@ -693,13 +690,16 @@ export default function VideoMeetComponent() {
                   </button>
                 </div>
 
-                {/* The full-size video */}
+                {/* Fullscreen video — callback ref fires on mount */}
                 <video
                   className={styles.fullscreenVideo}
-                  ref={fullscreenVideoRef}
+                  ref={fullscreenVideoCallbackRef}
                   autoPlay
                   playsInline
-                  muted={fullscreenVideo.label === "You" || fullscreenVideo.label === "Your Screen Share"}
+                  muted={
+                    fullscreenVideo.label === "You" ||
+                    fullscreenVideo.label === "Your Screen Share"
+                  }
                 />
               </div>
             </div>

@@ -76,9 +76,13 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
+    align-content: flex-start;
     padding: 10px;
     gap: 12px;
     margin-top: 10px;
+    /* Leave room for controls bar + local video */
+    max-height: calc(100vh - 22vh - 80px);
+    overflow-y: auto;
 }
 
 /* Wrapper for each remote video tile */
@@ -164,11 +168,11 @@
 }
 
 .fullscreenVideo {
-    max-width: 100vw;
-    max-height: 100vh;
-    width: auto;
-    height: auto;
+    /* Fill the entire overlay — same behaviour for both camera and screen share */
+    width: 100%;
+    height: 100%;
     object-fit: contain;
+    background: #000;
 }
 
 /* Top gradient bar */
@@ -252,10 +256,19 @@
     height: 100%;
 }
 
+/* Scrollable message list */
+.chattingDisplay {
+    overflow-y: auto;
+    padding-bottom: 80px;
+    height: calc(100% - 60px);
+}
+
 .chattingArea {
     position: absolute;
     bottom: 0;
     width: 100%;
+    padding-bottom: 8px;
+    background: white;
 }
 
 /* ===== Responsive for Mobile ===== */
