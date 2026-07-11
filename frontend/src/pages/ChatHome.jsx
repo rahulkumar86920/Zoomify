@@ -159,6 +159,7 @@ export default function ChatHome() {
     socketRef.current.on("call-cancelled", (data) => {
       setIncomingCall((prev) => {
         if (prev && prev.meetingCode === data.meetingCode) {
+          alert("Call cancelled by sender");
           return null; // Immediately closes incoming call card and stops ringtone!
         }
         return prev;

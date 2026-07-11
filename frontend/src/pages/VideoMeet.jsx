@@ -64,6 +64,7 @@ export default function VideoMeetComponent() {
   const [fullscreenVideo, setFullscreenVideo] = useState(null);
 
   const connections = useRef({}).current;
+  const iceCandidatesQueue = useRef({}).current;
 
   // ── Permissions ──────────────────────────────────────────────
   useEffect(() => {
@@ -417,6 +418,16 @@ export default function VideoMeetComponent() {
         connections[fromId]
           .setRemoteDescription(new RTCSessionDescription(signal.sdp))
           .then(() => {
+            // Process any queued ICE candidates for this peer
+            if (iceCandidatesQueue[fromId]) {
+              iceCandidatesQueue[fromId].forEach((candidate) => {
+                connections[fromId]
+                  .addIceCandidate(candidate)
+                  .catch((e) => console.error("Error adding queued ICE candidate:", e));
+              });
+              delete iceCandidatesQueue[fromId];
+            }
+
             if (signal.sdp.type === "offer") {
               connections[fromId]
                 .createAnswer()
@@ -439,9 +450,17 @@ export default function VideoMeetComponent() {
       }
 
       if (signal.ice) {
-        connections[fromId]
-          .addIceCandidate(signal.ice)
-          .catch((e) => console.error("Error adding ICE candidate:", e));
+        const candidate = new RTCIceCandidate(signal.ice);
+        if (connections[fromId] && connections[fromId].remoteDescription) {
+          connections[fromId]
+            .addIceCandidate(candidate)
+            .catch((e) => console.error("Error adding ICE candidate:", e));
+        } else {
+          if (!iceCandidatesQueue[fromId]) {
+            iceCandidatesQueue[fromId] = [];
+          }
+          iceCandidatesQueue[fromId].push(candidate);
+        }
       }
     }
   };

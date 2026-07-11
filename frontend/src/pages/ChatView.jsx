@@ -14,6 +14,7 @@ export default function ChatView({ convo, socket, onBack }) {
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const inputRef = useRef(null);
   
   const { getMessages } = useContext(AuthContext);
 
@@ -85,6 +86,12 @@ export default function ChatView({ convo, socket, onBack }) {
     });
 
     setInputText("");
+    
+    // Programmatically re-focus the input to keep mobile soft keyboard open
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 10);
+
     // Stop typing immediately
     socket.emit("typing-dm", {
       senderUsername: currentUserUsername,
@@ -203,13 +210,19 @@ export default function ChatView({ convo, socket, onBack }) {
       {/* Input panel */}
       <div className="chatInputArea">
         <input
+          ref={inputRef}
           type="text"
           placeholder="Type a message..."
           value={inputText}
           onChange={handleInputChange}
           onKeyDown={handleKeyPress}
         />
-        <button className="sendMsgBtn" onClick={handleSend} disabled={!inputText.trim()}>
+        <button 
+          className="sendMsgBtn" 
+          onClick={handleSend} 
+          onMouseDown={(e) => e.preventDefault()} 
+          disabled={!inputText.trim()}
+        >
           <SendIcon />
         </button>
       </div>
