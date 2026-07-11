@@ -7,7 +7,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { AuthContext } from "../contexts/AuthContext";
 
 // REPLACE THIS CLIENT ID WITH YOUR ACTUAL GOOGLE DEVELOPER CONSOLE CLIENT ID
-const GOOGLE_CLIENT_ID = "679808381862-2l70l8r0k7ebvqq7h3l3a193630v85c2.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = "220493047009-ossr269apmjt0feia1hm1cljkqu2ptli.apps.googleusercontent.com";
 
 export default function Authentication() {
   const [error, setError] = useState("");
