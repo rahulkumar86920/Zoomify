@@ -599,15 +599,50 @@ export default function VideoMeetComponent() {
       setAudioOnlyState(false);
       setVideo(true);
       setVideoAvailable(true);
-      const camStream = await navigator.mediaDevices.getUserMedia({
+      
+      // Request only camera stream (no microphone request) to prevent audio cutoff
+      const videoStream = await navigator.mediaDevices.getUserMedia({
         video: true,
-        audio: audio && audioAvailable,
+        audio: false,
       });
-      window.localStream = camStream;
-      if (localVideoref.current) {
-        localVideoref.current.srcObject = camStream;
+      
+      const videoTrack = videoStream.getVideoTracks()[0];
+      
+      if (window.localStream) {
+        // Remove existing video track if any to avoid duplicates
+        window.localStream.getVideoTracks().forEach(t => {
+          window.localStream.removeTrack(t);
+          t.stop();
+        });
+        window.localStream.addTrack(videoTrack);
+      } else {
+        window.localStream = videoStream;
       }
-      replaceTracksInConnections(camStream);
+      
+      if (localVideoref.current) {
+        localVideoref.current.srcObject = window.localStream;
+      }
+      
+      // Replace or add track in peer connections
+      for (const id in connections) {
+        if (id === socketIdRef.current) continue;
+        const senders = connections[id].getSenders();
+        const videoSender = senders.find((s) => s.track && s.track.kind === "video");
+        if (videoSender) {
+          videoSender.replaceTrack(videoTrack).catch((e) =>
+            console.error("replaceTrack error:", e)
+          );
+        } else {
+          connections[id].addTrack(videoTrack, window.localStream);
+          // Renegotiate connections
+          connections[id].createOffer()
+            .then(desc => connections[id].setLocalDescription(desc))
+            .then(() => {
+              socketRef.current.emit("signal", id, JSON.stringify({ sdp: connections[id].localDescription }));
+            })
+            .catch(e => console.error("Switch video renegotiate error:", e));
+        }
+      }
     } catch (e) {
       console.error("Error switching to video call:", e);
       alert("Could not access camera device.");
@@ -853,14 +888,25 @@ export default function VideoMeetComponent() {
             </div>
           )}
 
-          {audioOnlyState ? (
+          {videos.length === 0 ? (
+            <div className={styles.audioCallScreen}>
+              <div className={styles.audioCallCard}>
+                <div className={styles.audioAvatarCircle}>
+                  {recipientUsername ? recipientUsername.charAt(0).toUpperCase() : "C"}
+                </div>
+                <h3>{recipientUsername ? recipientUsername : "Zoomify Call"}</h3>
+                <p>{audioOnlyState ? "Voice Call" : "Video Call"}</p>
+                <p style={{ color: "#00a884", fontWeight: "600", marginTop: "4px" }}>Ringing...</p>
+              </div>
+            </div>
+          ) : audioOnlyState ? (
             <div className={styles.audioCallScreen}>
               <div className={styles.audioCallCard}>
                 <div className={styles.audioAvatarCircle}>
                   {recipientUsername ? recipientUsername.charAt(0).toUpperCase() : "C"}
                 </div>
                 <h3>{recipientUsername ? recipientUsername : "Voice Call"}</h3>
-                <p>{videos.length > 0 ? formatDuration(callDuration) : "Ringing..."}</p>
+                <p>{formatDuration(callDuration)}</p>
               </div>
 
               {/* Hidden audio tags to play incoming remote sound stream */}
@@ -871,8 +917,10 @@ export default function VideoMeetComponent() {
                     autoPlay
                     ref={(ref) => {
                       if (ref && vid.stream) {
-                        ref.srcObject = vid.stream;
-                        ref.play().catch((err) => console.warn("Audio play error:", err));
+                        if (ref.srcObject !== vid.stream) {
+                          ref.srcObject = vid.stream;
+                          ref.play().catch((err) => console.warn("Audio play error:", err));
+                        }
                       }
                     }}
                   />
