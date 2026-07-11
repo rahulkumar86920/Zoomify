@@ -179,6 +179,50 @@ export default function ChatHome() {
       });
     });
 
+    // Handle user online/offline status changes
+    socketRef.current.on("user-status-change", (data) => {
+      setConversations((prev) =>
+        prev.map((c) => {
+          const updatedParticipants = c.participants.map((p) =>
+            p.username === data.username
+              ? { ...p, isOnline: data.isOnline, lastSeen: data.lastSeen }
+              : p
+          );
+          return { ...c, participants: updatedParticipants };
+        })
+      );
+      setActiveConvo((prev) => {
+        if (!prev) return null;
+        const updatedParticipants = prev.participants.map((p) =>
+          p.username === data.username
+            ? { ...p, isOnline: data.isOnline, lastSeen: data.lastSeen }
+            : p
+        );
+        return { ...prev, participants: updatedParticipants };
+      });
+    });
+
+    // Handle typing status inside sidebar list in real-time
+    socketRef.current.on("dm-typing-receive", (data) => {
+      setConversations((prev) =>
+        prev.map((c) => {
+          const other = c.participants.find((p) => p.username === data.senderUsername);
+          if (other) {
+            return { ...c, isTyping: data.isTyping };
+          }
+          return c;
+        })
+      );
+    });
+
+    socketRef.current.on("conversation-read-ack", (data) => {
+      setConversations((prev) =>
+        prev.map((c) =>
+          c._id === data.conversationId ? { ...c, unreadCount: 0 } : c
+        )
+      );
+    });
+
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -353,9 +397,15 @@ export default function ChatHome() {
                       </span>
                     </div>
                     <div className="convoItemBody" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span className="convoLastMsgText" style={{ flex: 1, minWidth: 0 }}>
-                        {convo.lastMessage || `Start chatting with @${other.uniqueId}`}
-                      </span>
+                      {convo.isTyping ? (
+                        <span className="convoLastMsgText" style={{ flex: 1, minWidth: 0, color: "#00a884", fontWeight: "600" }}>
+                          typing...
+                        </span>
+                      ) : (
+                        <span className="convoLastMsgText" style={{ flex: 1, minWidth: 0 }}>
+                          {convo.lastMessage || `Start chatting with @${other.uniqueId}`}
+                        </span>
+                      )}
                       {convo.unreadCount > 0 && (
                         <span className="convoUnreadBadge">
                           {convo.unreadCount}
@@ -483,14 +533,34 @@ export default function ChatHome() {
 
             <form onSubmit={handleSaveSettings} className="settingsForm">
               <div className="authField" style={{ marginBottom: "1rem" }}>
-                <label style={{ display: "block", fontSize: "0.82rem", marginBottom: "4px", color: "var(--text-secondary)" }}>Profile Image URL</label>
-                <input
-                  type="text"
-                  placeholder="https://example.com/photo.jpg"
-                  value={editProfilePic}
-                  onChange={(e) => setEditProfilePic(e.target.value)}
-                  style={{ width: "100%", padding: "0.5rem", borderRadius: "8px", background: "rgba(0,0,0,0.3)", border: "1px solid var(--glass-border)", color: "white" }}
-                />
+                <label style={{ display: "block", fontSize: "0.82rem", marginBottom: "4px", color: "var(--text-secondary)" }}>Profile Photo</label>
+                <div className="fileUploadWrapper">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        if (file.size > 2 * 1024 * 1024) {
+                          alert("Image size should be less than 2MB.");
+                          return;
+                        }
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setEditProfilePic(reader.result);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    id="edit-profile-pic-upload"
+                    style={{ display: "none" }}
+                  />
+                  <label htmlFor="edit-profile-pic-upload" className="fileUploadLabel">
+                    <div className="avatarPlaceholder" style={{ padding: "0.55rem" }}>
+                      <span>Click to Upload New Photo</span>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               <div className="authField" style={{ marginBottom: "1rem" }}>

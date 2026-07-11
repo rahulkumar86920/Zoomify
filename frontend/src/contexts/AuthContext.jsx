@@ -22,12 +22,13 @@ export const AuthProvider = ({ children }) => {
 
   const router = useNavigate();
 
-  const handleRegister = async (name, username, password) => {
+  const handleRegister = async (name, username, password, profilePic) => {
     try {
       let request = await client.post("/register", {
         name: name,
         username: username,
         password: password,
+        profilePic: profilePic,
       });
 
       if (request.status === httpStatus.CREATED) {

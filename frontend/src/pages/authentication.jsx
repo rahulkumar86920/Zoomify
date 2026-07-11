@@ -11,12 +11,28 @@ export default function Authentication() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName]         = useState("");
+  const [profilePic, setProfilePic] = useState(""); // base64 representation of uploaded image
   const [error, setError]       = useState("");
   const [message, setMessage]   = useState("");
   const [formState, setFormState] = useState(0); // 0 = login, 1 = register
   const [showPass, setShowPass] = useState(false);
   const [showSnack, setShowSnack] = useState(false);
   const [loading, setLoading]   = useState(false);
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Image size should be less than 2MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePic(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const { handleRegister, handleLogin } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -42,13 +58,14 @@ export default function Authentication() {
       if (formState === 0) {
         await handleLogin(username, password);
       } else {
-        const result = await handleRegister(name, username, password);
+        const result = await handleRegister(name, username, password, profilePic);
         setMessage(result || "Account created! Please sign in.");
         setShowSnack(true);
         setFormState(0);
         setUsername("");
         setPassword("");
         setName("");
+        setProfilePic("");
       }
     } catch (err) {
       const msg = err?.response?.data?.message || "Something went wrong.";
@@ -119,18 +136,44 @@ export default function Authentication() {
           {/* Form */}
           <form onSubmit={handleAuth} noValidate>
             {formState === 1 && (
-              <div className="authField">
-                <label htmlFor="full-name">Full Name</label>
-                <input
-                  id="full-name"
-                  type="text"
-                  placeholder="Rahul Sah"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  autoComplete="name"
-                  required
-                />
-              </div>
+              <>
+                <div className="authField">
+                  <label htmlFor="full-name">Full Name</label>
+                  <input
+                    id="full-name"
+                    type="text"
+                    placeholder="Rahul Sah"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    autoComplete="name"
+                    required
+                  />
+                </div>
+                <div className="authField">
+                  <label>Profile Photo</label>
+                  <div className="fileUploadWrapper">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      id="profile-pic-upload"
+                      style={{ display: "none" }}
+                    />
+                    <label htmlFor="profile-pic-upload" className="fileUploadLabel">
+                      {profilePic ? (
+                        <div className="avatarPreview">
+                          <img src={profilePic} alt="Preview" />
+                          <span>Change Photo</span>
+                        </div>
+                      ) : (
+                        <div className="avatarPlaceholder">
+                          <span>Click to Upload Photo</span>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                </div>
+              </>
             )}
 
             <div className="authField">

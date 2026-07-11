@@ -87,9 +87,16 @@ export const connectToSocket = (server) => {
         })
 
         // ── Direct Messaging events ──────────────────────────────
-        socket.on("join-dm-lobby", (username) => {
+        socket.on("join-dm-lobby", async (username) => {
             socket.join(username);
+            socket.username = username; // Store on socket object to track on disconnect
             console.log(`[Socket] User ${username} joined their DM lobby`);
+            try {
+                await User.findOneAndUpdate({ username }, { isOnline: true });
+                io.emit("user-status-change", { username, isOnline: true });
+            } catch (e) {
+                console.error("Error setting online status:", e);
+            }
         })
 
         socket.on("send-dm", async (payload) => {
@@ -189,7 +196,18 @@ export const connectToSocket = (server) => {
             io.to(senderUsername).emit("call-reject-receive", { recipientUsername });
         })
 
-        socket.on("disconnect", () => {
+        socket.on("disconnect", async () => {
+            // Update user status to offline
+            if (socket.username) {
+                try {
+                    const now = new Date();
+                    await User.findOneAndUpdate({ username: socket.username }, { isOnline: false, lastSeen: now });
+                    io.emit("user-status-change", { username: socket.username, isOnline: false, lastSeen: now });
+                } catch (e) {
+                    console.error("Error setting offline status:", e);
+                }
+            }
+
             // Immediate cancel if caller disconnected before accept
             if (socketToCall[socket.id]) {
                 const { recipientUsername, meetingCode } = socketToCall[socket.id];

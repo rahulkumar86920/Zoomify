@@ -155,6 +155,20 @@ export default function ChatView({ convo, socket, onBack }) {
       : `/${code}?audio=1&to=${otherUser.username}&convo=${convo._id}`);
   };
 
+  const formatLastSeen = (dateStr) => {
+    if (!dateStr) return "offline";
+    const date = new Date(dateStr);
+    const diffMs = new Date() - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "last seen just now";
+    if (diffMins < 60) return `last seen ${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) {
+      return `last seen at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    return `last seen on ${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+  };
+
   return (
     <div className="chatViewContainer">
       {/* Header */}
@@ -173,7 +187,13 @@ export default function ChatView({ convo, socket, onBack }) {
           <div className="chatHeaderUserDetails">
             <span className="chatHeaderUserName">{otherUser.name}</span>
             <span className="chatHeaderUserStatus">
-              {otherUserTyping ? "typing..." : `@${otherUser.uniqueId}`}
+              {otherUserTyping ? (
+                <span style={{ color: "#00a884", fontWeight: "600" }}>typing...</span>
+              ) : otherUser.isOnline ? (
+                <span style={{ color: "#00a884", fontWeight: "600" }}>online</span>
+              ) : (
+                formatLastSeen(otherUser.lastSeen)
+              )}
             </span>
           </div>
         </div>
