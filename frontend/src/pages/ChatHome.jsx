@@ -15,6 +15,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import SettingsIcon from "@mui/icons-material/Settings";
 import server from "../environment";
 import "../App.css";
+import { initNotifications, showLocalNotification } from "../utils/notifications";
 
 export default function ChatHome() {
   const navigate = useNavigate();
@@ -107,6 +108,11 @@ export default function ChatHome() {
     }
   }, [token]);
 
+  // Init notification permission & service worker once
+  useEffect(() => {
+    initNotifications();
+  }, []);
+
   // Connect to Socket.io for Direct Messages and Calling
   useEffect(() => {
     if (!username) return;
@@ -121,11 +127,25 @@ export default function ChatHome() {
     socketRef.current.on("dm-receive", (msg) => {
       // Refresh conversations list to update lastMessage and order
       fetchConversationsList();
+      // Show notification if tab/app is not focused
+      if (document.hidden || !document.hasFocus()) {
+        showLocalNotification(
+          `New message from ${msg.senderName || msg.senderUsername || "Someone"}`,
+          msg.content || "Sent you a message",
+          { tag: "dm-" + msg.senderUsername, url: "/chat" }
+        );
+      }
     });
 
     // Handle Incoming Call Invite
     socketRef.current.on("call-invite-receive", (callData) => {
       setIncomingCall(callData);
+      // Always notify for incoming calls
+      showLocalNotification(
+        `📞 Incoming ${callData.isVideo ? "Video" : "Audio"} Call`,
+        `${callData.senderName || callData.senderUsername} is calling you`,
+        { tag: "call-" + callData.meetingCode, url: "/chat" }
+      );
     });
 
     return () => {
@@ -170,7 +190,7 @@ export default function ChatHome() {
         meetingCode: incomingCall.meetingCode
       });
     }
-    navigate(`/${incomingCall.meetingCode}`);
+    navigate(incomingCall.isVideo ? `/${incomingCall.meetingCode}` : `/${incomingCall.meetingCode}?audio=1`);
     setIncomingCall(null);
   };
 
@@ -288,23 +308,20 @@ export default function ChatHome() {
           )}
         </div>
 
-        {/* Floating Meet Button Menu */}
+        {/* Floating Meet Button — Join with Code only */}
         <div className="fabWrapper">
-          <button className="mainMeetFab" onClick={() => setShowMeetMenu(!showMeetMenu)} title="Call Dashboard">
+          <button className="mainMeetFab" onClick={() => setShowMeetMenu(!showMeetMenu)} title="Join Meeting">
             {showMeetMenu ? <CloseIcon /> : <AddIcon />}
           </button>
           {showMeetMenu && (
             <div className="meetFabMenu">
-              <button className="fabMenuItem" onClick={handleStartInstantMeeting}>
-                Instant Meeting
-              </button>
-              <div className="fabMenuDivider" />
               <div className="fabMenuJoinRow">
                 <input
                   type="text"
-                  placeholder="Join with code..."
+                  placeholder="Enter meeting code..."
                   value={meetingCode}
                   onChange={(e) => setMeetingCode(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleJoinVideoCall()}
                 />
                 <button onClick={handleJoinVideoCall} disabled={joining || !meetingCode.trim()}>
                   Go

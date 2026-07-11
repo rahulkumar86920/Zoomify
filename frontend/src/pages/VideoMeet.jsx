@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import io from "socket.io-client";
 import { Badge, IconButton } from "@mui/material";
 import VideocamIcon from "@mui/icons-material/Videocam";
@@ -31,6 +31,9 @@ const peerConfigConnections = {
 
 export default function VideoMeetComponent() {
   const navigate = useNavigate();
+  const location = useLocation();
+  // Detect audio-only mode via ?audio=1 query param
+  const isAudioOnly = new URLSearchParams(location.search).get("audio") === "1";
   const socketRef = useRef();
   const socketIdRef = useRef();
   const localVideoref = useRef();
@@ -70,18 +73,20 @@ export default function VideoMeetComponent() {
 
   const getPermissions = async () => {
     try {
-      const userMediaStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+      // For audio-only calls, don't request camera
+      const constraints = isAudioOnly
+        ? { video: false, audio: true }
+        : { video: true, audio: true };
+
+      const userMediaStream = await navigator.mediaDevices.getUserMedia(constraints);
 
       if (userMediaStream) {
         const videoTracks = userMediaStream.getVideoTracks();
         const audioTracks = userMediaStream.getAudioTracks();
 
-        setVideoAvailable(videoTracks.length > 0);
+        setVideoAvailable(!isAudioOnly && videoTracks.length > 0);
         setAudioAvailable(audioTracks.length > 0);
-        setVideo(videoTracks.length > 0);
+        setVideo(!isAudioOnly && videoTracks.length > 0);
         setAudio(audioTracks.length > 0);
 
         window.localStream = userMediaStream;
@@ -93,12 +98,12 @@ export default function VideoMeetComponent() {
         setAudioAvailable(false);
       }
 
-      setScreenAvailable(!!navigator.mediaDevices.getDisplayMedia);
+      setScreenAvailable(!isAudioOnly && !!navigator.mediaDevices.getDisplayMedia);
     } catch (error) {
       console.error("Error accessing media devices:", error);
       setVideoAvailable(false);
       setAudioAvailable(false);
-      alert("Failed to access camera or microphone. Please check permissions.");
+      alert("Failed to access microphone. Please check permissions.");
     }
 
     // Auto-connect if user is already logged in (skips Join As lobby)

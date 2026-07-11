@@ -140,8 +140,8 @@ export default function ChatView({ convo, socket, onBack }) {
       isVideo: isVideo
     });
 
-    // Go directly to room
-    navigate(`/${code}`);
+    // Go directly to room — append ?audio=1 for voice-only calls
+    navigate(isVideo ? `/${code}` : `/${code}?audio=1`);
   };
 
   return (

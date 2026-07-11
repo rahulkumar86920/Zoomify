@@ -3,6 +3,15 @@
    Mobile-first, premium dark glassmorphism
    ============================================================ */
 
+/* ── GLOBAL MOBILE INPUT ZOOM FIX ──────────────────────────────
+   iOS/Android zoom in when input font-size < 16px.
+   This one rule prevents the jarring zoom on tap. */
+input, textarea, select {
+  font-size: 16px !important;
+  touch-action: manipulation;
+}
+
+
 /* ── Global App wrapper ── */
 .App {
   min-height: 100vh;
@@ -456,7 +465,7 @@
   border-radius: 10px;
   padding: 0.65rem 0.9rem;
   color: var(--text-primary);
-  font-size: 0.9rem;
+  font-size: 16px !important;
   font-family: 'Inter', sans-serif;
   outline: none;
   transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
@@ -1229,7 +1238,7 @@
   border-radius: 4px;
   padding: 0.5rem;
   color: white;
-  font-size: 0.8rem;
+  font-size: 16px !important;
   outline: none;
 }
 
@@ -1462,8 +1471,10 @@
   border-radius: 8px;
   padding: 0.6rem 1rem;
   color: #e9edef;
-  font-size: 0.9rem;
+  font-size: 16px !important;
   outline: none;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .sendMsgBtn {
@@ -1560,7 +1571,7 @@
   color: white;
   width: 100%;
   outline: none;
-  font-size: 0.88rem;
+  font-size: 16px !important;
 }
 
 .searchResultsList {
@@ -1748,3 +1759,207 @@
   border-radius: 50%;
   object-fit: cover;
 }
+
+/* ========================================================
+   NEW HOME PAGE — natural, human-first layout
+   ======================================================== */
+.homePageContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 1.25rem;
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+  gap: 2.5rem;
+}
+
+.homeGreeting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.homeTimeLine {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.homeClockTime {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+.homeClockDate {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.homeGreeting h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(1.5rem, 6vw, 2rem);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.homeGreeting p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.homeActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Action tile (Messages, History) */
+.homeActionItem {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  text-align: left;
+  width: 100%;
+}
+
+.homeActionItem:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.homeActionItem.secondary {
+  background: transparent;
+}
+
+.homeActionIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.homeActionIcon.chatIcon {
+  background: rgba(0, 168, 132, 0.15);
+  color: #00a884;
+}
+
+.homeActionIcon.historyIcon {
+  background: rgba(124, 110, 240, 0.12);
+  color: var(--accent-light);
+}
+
+.homeActionText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.homeActionTitle {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.homeActionSub {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.homeActionArrow {
+  color: var(--text-muted) !important;
+  font-size: 1.1rem !important;
+}
+
+/* Join a meeting row */
+.homeJoinSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 1.1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+}
+
+.homeJoinLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.homeJoinRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.joinIcon {
+  color: var(--accent-light) !important;
+  font-size: 1.3rem !important;
+  flex-shrink: 0;
+}
+
+.homeJoinInput {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1.5px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 0.6rem 0.85rem;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.homeJoinInput:focus {
+  border-color: var(--accent);
+}
+
+.homeJoinInput::placeholder {
+  color: var(--text-muted);
+}
+
+.homeJoinBtn {
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  padding: 0.65rem 1.2rem;
+  color: white;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.homeJoinBtn:hover {
+  background: var(--accent-light);
+}
+
+.homeJoinBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+

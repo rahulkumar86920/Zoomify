@@ -5,7 +5,8 @@ import "../App.css";
 import RestoreIcon from "@mui/icons-material/Restore";
 import LogoutIcon from "@mui/icons-material/Logout";
 import VideocamIcon from "@mui/icons-material/Videocam";
-import KeyboardIcon from "@mui/icons-material/Keyboard";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { AuthContext } from "../contexts/AuthContext";
 import { IconButton } from "@mui/material";
 
@@ -23,25 +24,15 @@ function HomeComponent() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleJoinVideoCall = async (codeToJoin) => {
-    const targetCode = codeToJoin || meetingCode;
-    if (!targetCode.trim()) return;
+  const handleJoinVideoCall = async () => {
+    if (!meetingCode.trim()) return;
     setJoining(true);
     try {
-      await addToUserHistory(targetCode.trim());
-      navigate(`/${targetCode.trim()}`);
+      await addToUserHistory(meetingCode.trim());
+      navigate(`/${meetingCode.trim()}`);
     } catch {
       setJoining(false);
     }
-  };
-
-  const handleStartInstantMeeting = () => {
-    // Generate random meeting code: xxx-xxxx-xxx format
-    const part1 = Math.random().toString(36).substring(2, 5);
-    const part2 = Math.random().toString(36).substring(2, 6);
-    const part3 = Math.random().toString(36).substring(2, 5);
-    const generatedCode = `${part1}-${part2}-${part3}`;
-    handleJoinVideoCall(generatedCode);
   };
 
   const handleKeyDown = (e) => {
@@ -50,6 +41,7 @@ function HomeComponent() {
 
   const userName = localStorage.getItem("name") || localStorage.getItem("username") || "User";
   const userInitial = userName.trim().charAt(0).toUpperCase();
+  const profilePic = localStorage.getItem("profilePic") || "";
 
   const formattedTime = currentTime.toLocaleTimeString("en-IN", {
     hour: "2-digit",
@@ -58,9 +50,9 @@ function HomeComponent() {
   });
 
   const formattedDate = currentTime.toLocaleDateString("en-IN", {
-    weekday: "short",
+    weekday: "long",
     day: "numeric",
-    month: "short",
+    month: "long",
   });
 
   return (
@@ -77,7 +69,11 @@ function HomeComponent() {
             <RestoreIcon fontSize="small" />
           </IconButton>
           <div className="userAvatar" title={userName}>
-            {userInitial}
+            {profilePic ? (
+              <img src={profilePic} alt={userName} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+            ) : (
+              userInitial
+            )}
           </div>
           <button
             className="navLogout"
@@ -92,66 +88,66 @@ function HomeComponent() {
         </div>
       </nav>
 
-      {/* ── Main Dashboard Layout ── */}
-      <div className="meetContainer">
-        {/* Left column: Welcome & quick actions */}
-        <div className="leftPanel">
-          <div className="welcomeHeader">
-            <h2>Welcome back, {userName}</h2>
-            <p>Ready to start a high-quality connection?</p>
+      {/* ── Main Content ── */}
+      <div className="homePageContent">
+        {/* Greeting */}
+        <div className="homeGreeting">
+          <div className="homeTimeLine">
+            <span className="homeClockTime">{formattedTime}</span>
+            <span className="homeClockDate">{formattedDate}</span>
           </div>
-
-          <div className="dashboardActionsGrid">
-            {/* Quick action 1: Instant meeting */}
-            <div className="actionCard instantMeeting" onClick={handleStartInstantMeeting}>
-              <div className="cardIcon">
-                <VideocamIcon style={{ fontSize: "2rem" }} />
-              </div>
-              <div className="cardText">
-                <h3>New Meeting</h3>
-                <p>Start an instant call and invite others</p>
-              </div>
-            </div>
-
-            {/* Quick action 2: Join card */}
-            <div className="actionCard joinMeeting">
-              <div className="cardIcon secondary">
-                <KeyboardIcon style={{ fontSize: "1.8rem" }} />
-              </div>
-              <div className="cardText">
-                <h3>Join with code</h3>
-                <p>Enter code to participate in a call</p>
-                <div className="dashboardJoinRow">
-                  <input
-                    type="text"
-                    placeholder="abc-defg-hij"
-                    value={meetingCode}
-                    onChange={(e) => setMeetingCode(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                  />
-                  <button
-                    onClick={() => handleJoinVideoCall()}
-                    disabled={joining || !meetingCode.trim()}
-                  >
-                    {joining ? "Joining" : "Join"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <h1>Hey, {userName.split(" ")[0]} 👋</h1>
+          <p>What would you like to do today?</p>
         </div>
 
-        {/* Right column: live widget */}
-        <div className="rightPanel">
-          <div className="liveClockWidget">
-            <div className="clockTime">{formattedTime}</div>
-            <div className="clockDate">{formattedDate}</div>
-            <div className="clockDivider" />
-            <div className="connectionStatus">
-              <span className="statusDot" />
-              <span>Zoomify WebRTC Node Active</span>
+        {/* Actions */}
+        <div className="homeActions">
+          {/* Chat */}
+          <button className="homeActionItem" onClick={() => navigate("/chat")}>
+            <div className="homeActionIcon chatIcon">
+              <ChatBubbleOutlineIcon />
+            </div>
+            <div className="homeActionText">
+              <span className="homeActionTitle">Messages</span>
+              <span className="homeActionSub">Chat with your contacts</span>
+            </div>
+            <ArrowForwardIcon className="homeActionArrow" />
+          </button>
+
+          {/* Join with Code */}
+          <div className="homeJoinSection">
+            <label className="homeJoinLabel">Join a meeting</label>
+            <div className="homeJoinRow">
+              <VideocamIcon className="joinIcon" />
+              <input
+                type="text"
+                placeholder="Enter meeting code"
+                value={meetingCode}
+                onChange={(e) => setMeetingCode(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="homeJoinInput"
+              />
+              <button
+                className="homeJoinBtn"
+                onClick={handleJoinVideoCall}
+                disabled={joining || !meetingCode.trim()}
+              >
+                {joining ? "..." : "Join"}
+              </button>
             </div>
           </div>
+
+          {/* History */}
+          <button className="homeActionItem secondary" onClick={() => navigate("/history")}>
+            <div className="homeActionIcon historyIcon">
+              <RestoreIcon />
+            </div>
+            <div className="homeActionText">
+              <span className="homeActionTitle">History</span>
+              <span className="homeActionSub">View past meetings</span>
+            </div>
+            <ArrowForwardIcon className="homeActionArrow" />
+          </button>
         </div>
       </div>
     </div>
@@ -159,4 +155,3 @@ function HomeComponent() {
 }
 
 export default withAuth(HomeComponent);
-
