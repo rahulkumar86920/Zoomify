@@ -34,6 +34,9 @@ export default function VideoMeetComponent() {
   const location = useLocation();
   // Detect audio-only mode via ?audio=1 query param
   const isAudioOnly = new URLSearchParams(location.search).get("audio") === "1";
+  const [audioOnlyState, setAudioOnlyState] = useState(isAudioOnly);
+  const recipientUsername = new URLSearchParams(location.search).get("to") || "";
+
   const socketRef = useRef();
   const socketIdRef = useRef();
   const localVideoref = useRef();
@@ -70,7 +73,7 @@ export default function VideoMeetComponent() {
     }
     getPermissions();
   }, []);
-
+  
   // Ensure robust unmount cleanup
   useEffect(() => {
     return () => {
@@ -89,7 +92,7 @@ export default function VideoMeetComponent() {
   const getPermissions = async () => {
     try {
       // For audio-only calls, don't request camera
-      const constraints = isAudioOnly
+      const constraints = audioOnlyState
         ? { video: false, audio: true }
         : { video: true, audio: true };
 
@@ -99,9 +102,9 @@ export default function VideoMeetComponent() {
         const videoTracks = userMediaStream.getVideoTracks();
         const audioTracks = userMediaStream.getAudioTracks();
 
-        setVideoAvailable(!isAudioOnly && videoTracks.length > 0);
+        setVideoAvailable(!audioOnlyState && videoTracks.length > 0);
         setAudioAvailable(audioTracks.length > 0);
-        setVideo(!isAudioOnly && videoTracks.length > 0);
+        setVideo(!audioOnlyState && videoTracks.length > 0);
         setAudio(audioTracks.length > 0);
 
         window.localStream = userMediaStream;
@@ -113,7 +116,7 @@ export default function VideoMeetComponent() {
         setAudioAvailable(false);
       }
 
-      setScreenAvailable(!isAudioOnly && !!navigator.mediaDevices.getDisplayMedia);
+      setScreenAvailable(!audioOnlyState && !!navigator.mediaDevices.getDisplayMedia);
     } catch (error) {
       console.error("Error accessing media devices:", error);
       setVideoAvailable(false);
@@ -351,9 +354,11 @@ export default function VideoMeetComponent() {
       }
     };
 
-    // Modern track handling
     connections[fromId].ontrack = (event) => {
       console.log(`[WebRTC] Track added from ${fromId}`);
+      if (event.track && event.track.kind === "video") {
+        setAudioOnlyState(false);
+      }
       if (event.streams && event.streams[0]) {
         handleIncomingStream(event.streams[0]);
       }
@@ -450,6 +455,13 @@ export default function VideoMeetComponent() {
       socketRef.current.emit("join-call", window.location.href);
       socketIdRef.current = socketRef.current.id;
 
+      if (recipientUsername) {
+        socketRef.current.emit("register-call", {
+          recipientUsername,
+          meetingCode: window.location.pathname.substring(1)
+        });
+      }
+
       socketRef.current.on("chat-message", addMessage);
 
       socketRef.current.on("user-left", (id) => {
@@ -526,6 +538,26 @@ export default function VideoMeetComponent() {
     setVideo((v) => !v);
   };
 
+  const handleSwitchToVideo = async () => {
+    try {
+      setAudioOnlyState(false);
+      setVideo(true);
+      setVideoAvailable(true);
+      const camStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: audio && audioAvailable,
+      });
+      window.localStream = camStream;
+      if (localVideoref.current) {
+        localVideoref.current.srcObject = camStream;
+      }
+      replaceTracksInConnections(camStream);
+    } catch (e) {
+      console.error("Error switching to video call:", e);
+      alert("Could not access camera device.");
+    }
+  };
+
   const handleAudio = () => {
     if (!audioAvailable) {
       alert("Microphone is not available or permission was denied.");
@@ -559,6 +591,12 @@ export default function VideoMeetComponent() {
       for (const id in connections) {
         try { connections[id].close(); } catch (_) {}
         delete connections[id];
+      }
+      if (recipientUsername && socketRef.current) {
+        socketRef.current.emit("call-cancel", {
+          recipientUsername,
+          meetingCode: window.location.pathname.substring(1)
+        });
       }
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -713,9 +751,15 @@ export default function VideoMeetComponent() {
 
           {/* ── Control buttons ── */}
           <div className={styles.buttonContainers}>
-            <IconButton onClick={handleVideo} style={{ color: "white" }}>
-              {video ? <VideocamIcon /> : <VideocamOffIcon />}
-            </IconButton>
+            {audioOnlyState ? (
+              <IconButton onClick={handleSwitchToVideo} style={{ color: "#00a884" }} title="Switch to Video Call">
+                <VideocamIcon />
+              </IconButton>
+            ) : (
+              <IconButton onClick={handleVideo} style={{ color: "white" }}>
+                {video ? <VideocamIcon /> : <VideocamOffIcon />}
+              </IconButton>
+            )}
             <IconButton onClick={handleEndCall} style={{ color: "red" }}>
               <CallEndIcon />
             </IconButton>
@@ -738,54 +782,68 @@ export default function VideoMeetComponent() {
             </Badge>
           </div>
 
-          {/* ── Local (self) video ── */}
-          <div className={styles.localVideoWrapper}>
-            <video
-              className={styles.meetUserVideo}
-              ref={localVideoref}
-              autoPlay
-              muted
-            ></video>
-            <button
-              className={styles.localExpandBtn}
-              title="View fullscreen"
-              onClick={() =>
-                openFullscreen(
-                  window.localStream,
-                  screen ? "Your Screen Share" : "You",
-                  screen
-                )
-              }
-            >
-              <FullscreenIcon style={{ fontSize: "1.1rem" }} />
-            </button>
-          </div>
-
-          {/* ── Remote videos grid ── */}
-          <div className={styles.conferenceView}>
-            {videos.map((vid) => (
-              <div key={vid.socketId} className={styles.videoWrapper}>
+          {audioOnlyState ? (
+            <div className={styles.audioCallScreen}>
+              <div className={styles.audioCallCard}>
+                <div className={styles.audioAvatarCircle}>
+                  {recipientUsername ? recipientUsername.charAt(0).toUpperCase() : "C"}
+                </div>
+                <h3>{recipientUsername ? recipientUsername : "Voice Call"}</h3>
+                <p>{videos.length > 0 ? "Connected" : "Ringing..."}</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* ── Local (self) video ── */}
+              <div className={styles.localVideoWrapper}>
                 <video
-                  data-socket={vid.socketId}
-                  ref={(ref) => {
-                    if (ref && vid.stream) {
-                      ref.srcObject = vid.stream;
-                      ref.play().catch((err) => console.warn("Video play interrupted:", err));
-                    }
-                  }}
+                  className={styles.meetUserVideo}
+                  ref={localVideoref}
                   autoPlay
-                  playsInline
+                  muted
                 ></video>
                 <button
-                  className={styles.expandBtn}
+                  className={styles.localExpandBtn}
                   title="View fullscreen"
-                  onClick={() => openFullscreen(vid.stream, "Participant", false)}
+                  onClick={() =>
+                    openFullscreen(
+                      window.localStream,
+                      screen ? "Your Screen Share" : "You",
+                      screen
+                    )
+                  }
                 >
-                  <FullscreenIcon style={{ fontSize: "1.2rem" }} />
+                  <FullscreenIcon style={{ fontSize: "1.1rem" }} />
                 </button>
               </div>
-            ))}
-          </div>
+
+              {/* ── Remote videos grid ── */}
+              <div className={styles.conferenceView}>
+                {videos.map((vid) => (
+                  <div key={vid.socketId} className={styles.videoWrapper}>
+                    <video
+                      data-socket={vid.socketId}
+                      ref={(ref) => {
+                        if (ref && vid.stream) {
+                          ref.srcObject = vid.stream;
+                          ref.play().catch((err) => console.warn("Video play interrupted:", err));
+                        }
+                      }}
+                      autoPlay
+                      playsInline
+                    ></video>
+                    <button
+                      className={styles.expandBtn}
+                      title="View fullscreen"
+                      onClick={() => openFullscreen(vid.stream, "Participant", false)}
+                    >
+                      <FullscreenIcon style={{ fontSize: "1.2rem" }} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
           {/* ── Fullscreen overlay ── */}
           {fullscreenVideo && (

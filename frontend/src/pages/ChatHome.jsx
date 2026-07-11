@@ -155,6 +155,16 @@ export default function ChatHome() {
       );
     });
 
+    // Handle Call Cancelled (caller hung up before accepted)
+    socketRef.current.on("call-cancelled", (data) => {
+      setIncomingCall((prev) => {
+        if (prev && prev.meetingCode === data.meetingCode) {
+          return null; // Immediately closes incoming call card and stops ringtone!
+        }
+        return prev;
+      });
+    });
+
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();

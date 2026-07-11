@@ -6,6 +6,7 @@ import { Message } from "../models/message.model.js"
 let connections = {}
 let messages = {}
 let timeOnline = {}
+let socketToCall = {}
 
 export const connectToSocket = (server) => {
     const io = new Server(server, {
@@ -150,6 +151,18 @@ export const connectToSocket = (server) => {
             });
         })
 
+        socket.on("register-call", (payload) => {
+            const { recipientUsername, meetingCode } = payload;
+            socketToCall[socket.id] = { recipientUsername, meetingCode };
+            console.log(`[Socket] Registered call invite: code ${meetingCode} to ${recipientUsername}`);
+        })
+
+        socket.on("call-cancel", (payload) => {
+            const { recipientUsername, meetingCode } = payload;
+            io.to(recipientUsername).emit("call-cancelled", { meetingCode });
+            console.log(`[Socket] Call cancelled: code ${meetingCode}`);
+        })
+
         socket.on("call-accept", (payload) => {
             const { recipientUsername, senderUsername, meetingCode } = payload;
             io.to(senderUsername).emit("call-accept-receive", { recipientUsername, meetingCode });
@@ -161,6 +174,13 @@ export const connectToSocket = (server) => {
         })
 
         socket.on("disconnect", () => {
+            // Immediate cancel if caller disconnected before accept
+            if (socketToCall[socket.id]) {
+                const { recipientUsername, meetingCode } = socketToCall[socket.id];
+                io.to(recipientUsername).emit("call-cancelled", { meetingCode });
+                delete socketToCall[socket.id];
+            }
+
             var diffTime = Math.abs(timeOnline[socket.id] - new Date())
             var key
 
