@@ -154,6 +154,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const handleGoogleLogin = async (credential) => {
+    try {
+      let request = await client.post("/google-login", {
+        credential,
+      });
+
+      if (request.status === httpStatus.OK) {
+        localStorage.setItem("token", request.data.token);
+        if (request.data.name) localStorage.setItem("name", request.data.name);
+        if (request.data.username) localStorage.setItem("username", request.data.username);
+        if (request.data.uniqueId) localStorage.setItem("uniqueId", request.data.uniqueId);
+        localStorage.setItem("profilePic", request.data.profilePic || "");
+        return request.data;
+      }
+    } catch (err) {
+      throw err;
+    }
+  };
+
   const data = {
     userData,
     setUserData,
@@ -161,6 +180,7 @@ export const AuthProvider = ({ children }) => {
     getHistoryOfUser,
     handleRegister,
     handleLogin,
+    handleGoogleLogin,
     searchUsers,
     getConversations,
     getMessages,

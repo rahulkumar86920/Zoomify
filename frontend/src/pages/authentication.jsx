@@ -1,23 +1,82 @@
 import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../App.css";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import CloseIcon from "@mui/icons-material/Close";
+import GoogleIcon from "@mui/icons-material/Google";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { AuthContext } from "../contexts/AuthContext";
 
+// REPLACE THIS CLIENT ID WITH YOUR ACTUAL GOOGLE DEVELOPER CONSOLE CLIENT ID
+const GOOGLE_CLIENT_ID = "679808381862-2l70l8r0k7ebvqq7h3l3a193630v85c2.apps.googleusercontent.com";
+
 export default function Authentication() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName]         = useState("");
-  const [profilePic, setProfilePic] = useState(""); // base64 representation of uploaded image
-  const [error, setError]       = useState("");
-  const [message, setMessage]   = useState("");
-  const [formState, setFormState] = useState(0); // 0 = login, 1 = register
-  const [showPass, setShowPass] = useState(false);
-  const [showSnack, setShowSnack] = useState(false);
-  const [loading, setLoading]   = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [profilePic, setProfilePic] = useState("");
+  const [sessionData, setSessionData] = useState(null);
+
+  const { handleGoogleLogin, updateProfile } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (localStorage.getItem("token")) {
+      navigate("/home");
+      return;
+    }
+
+    // Callback to process JWT response from Google Identity Services
+    const handleGoogleCredentialResponse = async (response) => {
+      setError("");
+      setLoading(true);
+      try {
+        const data = await handleGoogleLogin(response.credential);
+        if (data) {
+          if (data.isNewUser) {
+            // Succeeded but Google account has no profile picture
+            setSessionData(data);
+            setShowUploadForm(true);
+          } else {
+            // Already registered with profile photo, enter dashboard
+            navigate("/home");
+          }
+        }
+      } catch (err) {
+        const msg = err?.response?.data?.message || "Google authentication failed.";
+        setError(msg);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    /* global google */
+    if (window.google) {
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredentialResponse,
+      });
+
+      google.accounts.id.renderButton(
+        document.getElementById("google-login-btn"),
+        { theme: "outline", size: "large", width: "100%", text: "signin_with" }
+      );
+    } else {
+      const interval = setInterval(() => {
+        if (window.google) {
+          google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleGoogleCredentialResponse,
+          });
+          google.accounts.id.renderButton(
+            document.getElementById("google-login-btn"),
+            { theme: "outline", size: "large", width: "100%", text: "signin_with" }
+          );
+          clearInterval(interval);
+        }
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [navigate, handleGoogleLogin]);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -34,50 +93,22 @@ export default function Authentication() {
     }
   };
 
-  const { handleRegister, handleLogin } = useContext(AuthContext);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (localStorage.getItem("token")) {
-      navigate("/home");
-    }
-  }, [navigate]);
-
-  useEffect(() => {
-    if (showSnack) {
-      const t = setTimeout(() => setShowSnack(false), 3500);
-      return () => clearTimeout(t);
-    }
-  }, [showSnack]);
-
-  const handleAuth = async (e) => {
+  const handleCompleteRegistration = async (e) => {
     e.preventDefault();
+    if (!profilePic) {
+      setError("Please upload a profile picture.");
+      return;
+    }
     setError("");
     setLoading(true);
     try {
-      if (formState === 0) {
-        await handleLogin(username, password);
-      } else {
-        const result = await handleRegister(name, username, password, profilePic);
-        setMessage(result || "Account created! Please sign in.");
-        setShowSnack(true);
-        setFormState(0);
-        setUsername("");
-        setPassword("");
-        setName("");
-        setProfilePic("");
-      }
+      await updateProfile(sessionData.name, sessionData.uniqueId, profilePic);
+      navigate("/home");
     } catch (err) {
-      const msg = err?.response?.data?.message || "Something went wrong.";
-      setError(msg);
+      setError("Failed to update profile image. Please try again.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const switchTab = (tab) => {
-    setFormState(tab);
-    setError("");
   };
 
   return (
@@ -102,64 +133,48 @@ export default function Authentication() {
 
       {/* Card */}
       <div className="authContent">
-        <div className="authCard">
-          {/* Icon */}
-          <div className="authIconWrapper">
-            <LockOutlinedIcon />
-          </div>
+        <div className="authCard googleAuthCard">
+          {!showUploadForm ? (
+            <>
+              <div className="authIconWrapper">
+                <GoogleIcon style={{ fontSize: "2rem", color: "#00a884" }} />
+              </div>
 
-          <h1>{formState === 0 ? "Welcome back" : "Create account"}</h1>
-          <p>
-            {formState === 0
-              ? "Sign in to your Zoomify account"
-              : "Join Zoomify — it's free"}
-          </p>
+              <h1>Welcome to Zoomify</h1>
+              <p style={{ marginBlock: "0.5rem 1.5rem" }}>
+                Sign in securely using your Google account to get started
+              </p>
 
-          {/* Tabs */}
-          <div className="authTabs">
-            <button
-              type="button"
-              className={`authTab ${formState === 0 ? "active" : ""}`}
-              onClick={() => switchTab(0)}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              className={`authTab ${formState === 1 ? "active" : ""}`}
-              onClick={() => switchTab(1)}
-            >
-              Sign Up
-            </button>
-          </div>
+              {error && <p className="authError" style={{ marginBlock: "1rem" }}>⚠ {error}</p>}
 
-          {/* Form */}
-          <form onSubmit={handleAuth} noValidate>
-            {formState === 1 && (
-              <>
-                <div className="authField">
-                  <label htmlFor="full-name">Full Name</label>
-                  <input
-                    id="full-name"
-                    type="text"
-                    placeholder="Rahul Sah"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    autoComplete="name"
-                    required
-                  />
-                </div>
-                <div className="authField">
-                  <label>Profile Photo</label>
+              <div id="google-login-btn" style={{ minHeight: "45px", marginTop: "1rem" }}></div>
+
+              <div style={{ marginTop: "1.5rem", fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center" }}>
+                By signing in, you agree to our Terms and Service.
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="authIconWrapper">
+                <CloudUploadIcon style={{ fontSize: "2rem", color: "#00a884" }} />
+              </div>
+
+              <h1>Set Profile Picture</h1>
+              <p style={{ marginBlock: "0.5rem 1.5rem" }}>
+                Your Google account does not have a public profile picture. Please upload a photo to continue.
+              </p>
+
+              <form onSubmit={handleCompleteRegistration}>
+                <div className="authField" style={{ marginBottom: "1.5rem" }}>
                   <div className="fileUploadWrapper">
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleImageUpload}
-                      id="profile-pic-upload"
+                      id="signup-profile-pic"
                       style={{ display: "none" }}
                     />
-                    <label htmlFor="profile-pic-upload" className="fileUploadLabel">
+                    <label htmlFor="signup-profile-pic" className="fileUploadLabel">
                       {profilePic ? (
                         <div className="avatarPreview">
                           <img src={profilePic} alt="Preview" />
@@ -167,87 +182,28 @@ export default function Authentication() {
                         </div>
                       ) : (
                         <div className="avatarPlaceholder">
-                          <span>Click to Upload Photo</span>
+                          <span>Click to Select Profile Image</span>
                         </div>
                       )}
                     </label>
                   </div>
                 </div>
-              </>
-            )}
 
-            <div className="authField">
-              <label htmlFor="auth-username">Username</label>
-              <input
-                id="auth-username"
-                type="text"
-                placeholder="your_username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
-                required
-              />
-            </div>
+                {error && <p className="authError" style={{ marginBlock: "1rem" }}>⚠ {error}</p>}
 
-            <div className="authField" style={{ position: "relative" }}>
-              <label htmlFor="auth-password">Password</label>
-              <input
-                id="auth-password"
-                type={showPass ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete={formState === 0 ? "current-password" : "new-password"}
-                style={{ paddingRight: "2.8rem" }}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass((v) => !v)}
-                style={{
-                  position: "absolute",
-                  right: "0.75rem",
-                  top: "2.25rem",
-                  background: "none",
-                  border: "none",
-                  color: "var(--text-muted)",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  padding: 0,
-                }}
-                tabIndex={-1}
-              >
-                {showPass ? (
-                  <VisibilityOffIcon style={{ fontSize: "1.1rem" }} />
-                ) : (
-                  <VisibilityIcon style={{ fontSize: "1.1rem" }} />
-                )}
-              </button>
-            </div>
-
-            {error && <p className="authError">⚠ {error}</p>}
-
-            <button
-              type="submit"
-              className="authSubmitBtn"
-              disabled={loading}
-              style={{ opacity: loading ? 0.7 : 1, cursor: loading ? "not-allowed" : "pointer" }}
-            >
-              {loading
-                ? "Please wait…"
-                : formState === 0
-                ? "Sign In →"
-                : "Create Account →"}
-            </button>
-          </form>
+                <button
+                  type="submit"
+                  className="authSubmitBtn"
+                  disabled={loading || !profilePic}
+                  style={{ opacity: (loading || !profilePic) ? 0.7 : 1 }}
+                >
+                  {loading ? "Completing Setup..." : "Complete Registration →"}
+                </button>
+              </form>
+            </>
+          )}
         </div>
       </div>
-
-      {/* Success snackbar */}
-      {showSnack && (
-        <div className="authSnackbar">✓ {message}</div>
-      )}
     </div>
   );
 }

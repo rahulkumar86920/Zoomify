@@ -181,4 +181,62 @@ const updateProfile = async (req, res) => {
   }
 };
 
-export { login, register, getUserHistory, addToHistory, searchUsers, updateProfile };
+const googleLogin = async (req, res) => {
+  const { credential } = req.body;
+  if (!credential) {
+    return res.status(httpStatus.BAD_REQUEST).json({ message: "No credential token provided" });
+  }
+
+  try {
+    const parts = credential.split(".");
+    if (parts.length !== 3) {
+      return res.status(httpStatus.BAD_REQUEST).json({ message: "Invalid token format" });
+    }
+
+    const payloadBuffer = Buffer.from(parts[1], "base64");
+    const payload = JSON.parse(payloadBuffer.toString("utf-8"));
+
+    const { email, name, picture } = payload;
+    if (!email) {
+      return res.status(httpStatus.BAD_REQUEST).json({ message: "Invalid token payload: email missing" });
+    }
+
+    const username = email.split("@")[0].toLowerCase();
+
+    // Check if user already exists
+    let user = await User.findOne({ $or: [{ username }, { token: credential }] });
+    let isNewUser = false;
+
+    if (!user) {
+      isNewUser = true;
+      const hashedPassword = await bcrypt.hash(crypto.randomBytes(16).toString("hex"), 10);
+      user = new User({
+        name,
+        username,
+        password: hashedPassword,
+        profilePic: picture || "",
+      });
+    } else {
+      if (picture && !user.profilePic) {
+        user.profilePic = picture;
+      }
+    }
+
+    const token = crypto.randomBytes(20).toString("hex");
+    user.token = token;
+    await user.save();
+
+    res.status(httpStatus.OK).json({
+      token,
+      name: user.name,
+      username: user.username,
+      uniqueId: user.uniqueId,
+      profilePic: user.profilePic || "",
+      isNewUser: isNewUser && !user.profilePic,
+    });
+  } catch (e) {
+    res.status(500).json({ message: `Google authentication failed: ${e.message}` });
+  }
+};
+
+export { login, register, getUserHistory, addToHistory, searchUsers, updateProfile, googleLogin };
