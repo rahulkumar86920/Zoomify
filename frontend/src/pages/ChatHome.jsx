@@ -16,6 +16,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import server from "../environment";
 import "../App.css";
 import { initNotifications, showLocalNotification } from "../utils/notifications";
+import { playMessageSound, startRingtone, stopRingtone } from "../utils/sounds";
 
 export default function ChatHome() {
   const navigate = useNavigate();
@@ -127,6 +128,12 @@ export default function ChatHome() {
     socketRef.current.on("dm-receive", (msg) => {
       // Refresh conversations list to update lastMessage and order
       fetchConversationsList();
+      
+      // Play pleasant Web Audio ping sound
+      if (msg.senderUsername !== username) {
+        playMessageSound();
+      }
+
       // Show notification if tab/app is not focused
       if (document.hidden || !document.hasFocus()) {
         showLocalNotification(
@@ -152,8 +159,21 @@ export default function ChatHome() {
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
+      stopRingtone();
     };
   }, [username]);
+
+  // Handle ringtone audio play/stop
+  useEffect(() => {
+    if (incomingCall) {
+      startRingtone();
+    } else {
+      stopRingtone();
+    }
+    return () => {
+      stopRingtone();
+    };
+  }, [incomingCall]);
 
   const handleStartInstantMeeting = async () => {
     const part1 = Math.random().toString(36).substring(2, 5);

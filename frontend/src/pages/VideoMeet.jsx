@@ -71,6 +71,21 @@ export default function VideoMeetComponent() {
     getPermissions();
   }, []);
 
+  // Ensure robust unmount cleanup
+  useEffect(() => {
+    return () => {
+      try {
+        if (window.localStream) {
+          window.localStream.getTracks().forEach((t) => t.stop());
+          window.localStream = null;
+        }
+      } catch (_) {}
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, []);
+
   const getPermissions = async () => {
     try {
       // For audio-only calls, don't request camera
@@ -438,7 +453,17 @@ export default function VideoMeetComponent() {
       socketRef.current.on("chat-message", addMessage);
 
       socketRef.current.on("user-left", (id) => {
-        setVideos((videos) => videos.filter((video) => video.socketId !== id));
+        setVideos((prevVideos) => {
+          const filtered = prevVideos.filter((video) => video.socketId !== id);
+          // If we had a peer connected, and now they disconnected:
+          if (prevVideos.length > 0 && filtered.length === 0) {
+            setTimeout(() => {
+              endCallAndRedirect("Call disconnected");
+            }, 50);
+          }
+          return filtered;
+        });
+
         if (connections[id]) {
           try { connections[id].close(); } catch (_) {}
           delete connections[id];
@@ -522,7 +547,7 @@ export default function VideoMeetComponent() {
     }
   };
 
-  const handleEndCall = () => {
+  const endCallAndRedirect = (alertMessage) => {
     try {
       if (window.localStream) {
         window.localStream.getTracks().forEach((t) => t.stop());
@@ -535,14 +560,24 @@ export default function VideoMeetComponent() {
         try { connections[id].close(); } catch (_) {}
         delete connections[id];
       }
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
     } catch (e) {
       console.error("Error ending call:", e);
+    }
+    if (alertMessage) {
+      alert(alertMessage);
     }
     if (localStorage.getItem("token")) {
       navigate("/home");
     } else {
       navigate("/");
     }
+  };
+
+  const handleEndCall = () => {
+    endCallAndRedirect();
   };
 
   const openChat = () => {
