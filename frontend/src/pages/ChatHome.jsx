@@ -109,6 +109,19 @@ export default function ChatHome() {
     }
   }, [token]);
 
+  // Auto-select active conversation if passed in URL query param (e.g. returning from call)
+  useEffect(() => {
+    const convoQueryId = new URLSearchParams(window.location.search).get("convo");
+    if (convoQueryId && conversations.length > 0) {
+      const matched = conversations.find(c => c._id === convoQueryId);
+      if (matched) {
+        setActiveConvo(matched);
+        // Clear convo query param from address bar to prevent looping or stale selects on refresh
+        navigate("/home", { replace: true });
+      }
+    }
+  }, [conversations, navigate]);
+
   // Init notification permission & service worker once
   useEffect(() => {
     initNotifications();
@@ -238,7 +251,9 @@ export default function ChatHome() {
         meetingCode: incomingCall.meetingCode
       });
     }
-    navigate(incomingCall.isVideo ? `/${incomingCall.meetingCode}` : `/${incomingCall.meetingCode}?audio=1`);
+    navigate(incomingCall.isVideo 
+      ? `/${incomingCall.meetingCode}?to=${incomingCall.senderUsername}&convo=${incomingCall.conversationId}` 
+      : `/${incomingCall.meetingCode}?audio=1&to=${incomingCall.senderUsername}&convo=${incomingCall.conversationId}`);
     setIncomingCall(null);
   };
 

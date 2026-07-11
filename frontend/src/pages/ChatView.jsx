@@ -139,21 +139,20 @@ export default function ChatView({ convo, socket, onBack }) {
   // Call invitation handlers
   const initiateCall = (isVideo) => {
     if (!socket) return;
-
-    // Generate custom code: call-xxx-xxx-xxx
     const code = "call-" + Math.random().toString(36).substring(2, 11);
-    
-    // Emit call invite to recipient
     socket.emit("call-invite", {
       senderName: currentUserName,
       senderUsername: currentUserUsername,
       recipientUsername: otherUser.username,
       meetingCode: code,
-      isVideo: isVideo
+      isVideo: isVideo,
+      conversationId: convo._id // Include conversationId in the socket invite payload
     });
 
-    // Go directly to room — pass parameters for audio state and the recipient username
-    navigate(isVideo ? `/${code}?to=${otherUser.username}` : `/${code}?audio=1&to=${otherUser.username}`);
+    // Go directly to room — pass parameters for audio state, recipient username, and conversation ID
+    navigate(isVideo 
+      ? `/${code}?to=${otherUser.username}&convo=${convo._id}` 
+      : `/${code}?audio=1&to=${otherUser.username}&convo=${convo._id}`);
   };
 
   return (

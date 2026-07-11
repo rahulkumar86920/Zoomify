@@ -36,6 +36,7 @@ export default function VideoMeetComponent() {
   const isAudioOnly = new URLSearchParams(location.search).get("audio") === "1";
   const [audioOnlyState, setAudioOnlyState] = useState(isAudioOnly);
   const recipientUsername = new URLSearchParams(location.search).get("to") || "";
+  const convoId = new URLSearchParams(location.search).get("convo") || "";
 
   const socketRef = useRef();
   const socketIdRef = useRef();
@@ -382,8 +383,16 @@ export default function VideoMeetComponent() {
       if (event.track && event.track.kind === "video") {
         setAudioOnlyState((prev) => {
           if (prev) {
-            // Peer switched to video call. Automatically turn on our own camera too!
-            handleSwitchToVideo();
+            // Prompt the receiver before converting call type
+            setTimeout(() => {
+              const accept = window.confirm(
+                "The other person wants to convert this call from audio to video. Do you want to enable your camera?"
+              );
+              if (accept) {
+                handleSwitchToVideo();
+              }
+            }, 100);
+            return true; // Keep in audio-only view until accepted
           }
           return false;
         });
@@ -655,7 +664,11 @@ export default function VideoMeetComponent() {
       alert(alertMessage);
     }
     if (localStorage.getItem("token")) {
-      navigate("/home");
+      if (convoId) {
+        navigate(`/home?convo=${convoId}`);
+      } else {
+        navigate("/home");
+      }
     } else {
       navigate("/");
     }
@@ -899,8 +912,10 @@ export default function VideoMeetComponent() {
                       data-socket={vid.socketId}
                       ref={(ref) => {
                         if (ref && vid.stream) {
-                          ref.srcObject = vid.stream;
-                          ref.play().catch((err) => console.warn("Video play interrupted:", err));
+                          if (ref.srcObject !== vid.stream) {
+                            ref.srcObject = vid.stream;
+                            ref.play().catch((err) => console.warn("Video play interrupted:", err));
+                          }
                         }
                       }}
                       autoPlay
