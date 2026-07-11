@@ -59,6 +59,7 @@ export default function VideoMeetComponent() {
     return localStorage.getItem("name") || localStorage.getItem("username") || "";
   });
   const [videos, setVideos] = useState([]);
+  const [callDuration, setCallDuration] = useState(0);
 
   // Fullscreen overlay: { stream, label, isScreen }
   const [fullscreenVideo, setFullscreenVideo] = useState(null);
@@ -89,6 +90,27 @@ export default function VideoMeetComponent() {
       }
     };
   }, []);
+
+  // Increment call timer every second when a peer is connected
+  useEffect(() => {
+    let timerInterval = null;
+    if (videos.length > 0) {
+      timerInterval = setInterval(() => {
+        setCallDuration((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setCallDuration(0);
+    }
+    return () => {
+      if (timerInterval) clearInterval(timerInterval);
+    };
+  }, [videos.length]);
+
+  const formatDuration = (secs) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, "0");
+    const s = (secs % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
 
   const getPermissions = async () => {
     try {
@@ -806,6 +828,12 @@ export default function VideoMeetComponent() {
             </Badge>
           </div>
 
+          {videos.length > 0 && !audioOnlyState && (
+            <div className={styles.durationPill}>
+              {formatDuration(callDuration)}
+            </div>
+          )}
+
           {audioOnlyState ? (
             <div className={styles.audioCallScreen}>
               <div className={styles.audioCallCard}>
@@ -813,7 +841,23 @@ export default function VideoMeetComponent() {
                   {recipientUsername ? recipientUsername.charAt(0).toUpperCase() : "C"}
                 </div>
                 <h3>{recipientUsername ? recipientUsername : "Voice Call"}</h3>
-                <p>{videos.length > 0 ? "Connected" : "Ringing..."}</p>
+                <p>{videos.length > 0 ? formatDuration(callDuration) : "Ringing..."}</p>
+              </div>
+
+              {/* Hidden audio tags to play incoming remote sound stream */}
+              <div style={{ display: "none" }}>
+                {videos.map((vid) => (
+                  <audio
+                    key={vid.socketId}
+                    autoPlay
+                    ref={(ref) => {
+                      if (ref && vid.stream) {
+                        ref.srcObject = vid.stream;
+                        ref.play().catch((err) => console.warn("Audio play error:", err));
+                      }
+                    }}
+                  />
+                ))}
               </div>
             </div>
           ) : (

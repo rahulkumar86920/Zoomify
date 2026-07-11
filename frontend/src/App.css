@@ -1979,3 +1979,20 @@ input, textarea, select {
   cursor: not-allowed;
 }
 
+.convoUnreadBadge {
+  background: #00a884;
+  color: #111b21;
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  padding: 2px;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(0, 168, 132, 0.2);
+}
+

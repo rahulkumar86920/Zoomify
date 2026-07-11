@@ -186,6 +186,23 @@ export default function ChatHome() {
     };
   }, [incomingCall]);
 
+  const handleSelectActiveConvo = (convo) => {
+    setActiveConvo(convo);
+    // Mark as read in DB and trigger real-time unread ack
+    if (socketRef.current) {
+      socketRef.current.emit("read-conversation", {
+        conversationId: convo._id,
+        senderUsername: username
+      });
+    }
+    // Set unread count to 0 in local state so the badge disappears instantly!
+    setConversations((prev) =>
+      prev.map((c) =>
+        c._id === convo._id ? { ...c, unreadCount: 0 } : c
+      )
+    );
+  };
+
   const handleStartInstantMeeting = async () => {
     const part1 = Math.random().toString(36).substring(2, 5);
     const part2 = Math.random().toString(36).substring(2, 6);
@@ -301,7 +318,7 @@ export default function ChatHome() {
                 <div
                   key={convo._id}
                   className={`conversationListItem ${isActive ? "active" : ""}`}
-                  onClick={() => setActiveConvo(convo)}
+                  onClick={() => handleSelectActiveConvo(convo)}
                 >
                   <div className="avatarCircle itemAvatar">
                     {other.profilePic ? (
@@ -320,10 +337,15 @@ export default function ChatHome() {
                         }) : ""}
                       </span>
                     </div>
-                    <div className="convoItemBody">
-                      <span className="convoLastMsgText">
+                    <div className="convoItemBody" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span className="convoLastMsgText" style={{ flex: 1, minWidth: 0 }}>
                         {convo.lastMessage || `Start chatting with @${other.uniqueId}`}
                       </span>
+                      {convo.unreadCount > 0 && (
+                        <span className="convoUnreadBadge">
+                          {convo.unreadCount}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

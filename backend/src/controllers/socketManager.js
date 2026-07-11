@@ -139,6 +139,22 @@ export const connectToSocket = (server) => {
             io.to(recipientUsername).emit("dm-typing-receive", { senderUsername, isTyping });
         })
 
+        socket.on("read-conversation", async (payload) => {
+            const { conversationId, senderUsername } = payload;
+            try {
+                const user = await User.findOne({ username: senderUsername });
+                if (user) {
+                    await Message.updateMany(
+                        { conversationId, sender: { $ne: user._id }, read: false },
+                        { $set: { read: true } }
+                    );
+                    io.to(senderUsername).emit("conversation-read-ack", { conversationId });
+                }
+            } catch (e) {
+                console.error("Error marking messages as read:", e);
+            }
+        })
+
         // ── WhatsApp-style Call Invitations ─────────────────────
         socket.on("call-invite", (payload) => {
             const { senderName, senderUsername, recipientUsername, meetingCode, isVideo } = payload;

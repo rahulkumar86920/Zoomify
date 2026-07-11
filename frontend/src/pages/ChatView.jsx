@@ -48,6 +48,11 @@ export default function ChatView({ convo, socket, onBack }) {
     const handleDmReceive = (msg) => {
       if (msg.conversationId === convo._id) {
         setMessages((prev) => [...prev, msg]);
+        // Instantly mark the message as read since the conversation is currently open
+        socket.emit("read-conversation", {
+          conversationId: convo._id,
+          senderUsername: currentUserUsername
+        });
       }
     };
 

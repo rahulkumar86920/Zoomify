@@ -21,7 +21,20 @@ const getConversations = async (req, res) => {
       .populate("participants", "name username uniqueId profilePic")
       .sort({ lastMessageAt: -1 });
 
-    res.json(conversations);
+    const conversationsWithUnread = await Promise.all(
+      conversations.map(async (convo) => {
+        const unreadCount = await Message.countDocuments({
+          conversationId: convo._id,
+          sender: { $ne: user._id },
+          read: false,
+        });
+        const convoObj = convo.toObject();
+        convoObj.unreadCount = unreadCount;
+        return convoObj;
+      })
+    );
+
+    res.json(conversationsWithUnread);
   } catch (e) {
     res.status(500).json({ message: `Something went wrong: ${e.message}` });
   }
@@ -46,6 +59,12 @@ const getMessages = async (req, res) => {
     if (!convo || !convo.participants.includes(user._id)) {
       return res.status(httpStatus.FORBIDDEN).json({ message: "Unauthorized to access this conversation" });
     }
+
+    // Mark messages sent by others in this conversation as read
+    await Message.updateMany(
+      { conversationId, sender: { $ne: user._id }, read: false },
+      { $set: { read: true } }
+    );
 
     const messages = await Message.find({ conversationId })
       .populate("sender", "name username uniqueId profilePic")
