@@ -1184,22 +1184,22 @@ input, textarea, select {
 
 .meetFabMenu {
   position: absolute;
-  bottom: 60px;
+  bottom: 68px; /* Offset higher to avoid touching the FAB icon directly */
   right: 0;
-  width: 250px;
+  width: 280px; /* Slightly wider for comfortable typing space */
   background: #222e35;
-  border: 1px solid #374248;
-  border-radius: 8px;
-  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-  animation: slideUpMenu 0.15s ease-out;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  animation: slideUpMenu 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes slideUpMenu {
-  from { transform: translateY(8px); opacity: 0; }
+  from { transform: translateY(12px); opacity: 0; }
   to   { transform: translateY(0); opacity: 1; }
 }
 
@@ -1228,18 +1228,21 @@ input, textarea, select {
 
 .fabMenuJoinRow {
   display: flex;
-  gap: 6px;
+  gap: 8px;
+  width: 100%;
 }
 
 .fabMenuJoinRow input {
   flex: 1;
+  min-width: 0;
   background: #111b21;
-  border: 1px solid #222e35;
-  border-radius: 4px;
-  padding: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
   color: white;
   font-size: 16px !important;
   outline: none;
+  transition: border-color 0.2s;
 }
 
 .fabMenuJoinRow input:focus {
@@ -1250,11 +1253,16 @@ input, textarea, select {
   background: #00a884;
   color: #111b21;
   border: none;
-  border-radius: 4px;
-  padding: 0.5rem 0.85rem;
-  font-size: 0.8rem;
+  border-radius: 10px;
+  padding: 0.65rem 1.1rem;
+  font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
+  transition: background 0.2s;
+}
+
+.fabMenuJoinRow button:hover {
+  background: #008f72;
 }
 
 /* ── Main Chat Area ── */

@@ -471,7 +471,7 @@ export default function VideoMeetComponent() {
     socketRef.current.on("signal", gotMessageFromServer);
 
     socketRef.current.on("connect", () => {
-      socketRef.current.emit("join-call", window.location.href);
+      socketRef.current.emit("join-call", window.location.pathname);
       socketIdRef.current = socketRef.current.id;
 
       if (recipientUsername) {
@@ -739,7 +739,12 @@ export default function VideoMeetComponent() {
           {showModal && (
             <div className={styles.chatRoom}>
               <div className={styles.chatContainer}>
-                <h1>💬 Chat</h1>
+                <div className={styles.chatHeader}>
+                  <h1>💬 Chat</h1>
+                  <IconButton onClick={openChat} style={{ color: "white" }} title="Close Chat">
+                    <CloseIcon />
+                  </IconButton>
+                </div>
                 <div className={styles.chattingDisplay}>
                   {messages.length ? (
                     messages.map((item, index) => (

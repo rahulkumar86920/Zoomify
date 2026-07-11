@@ -218,13 +218,22 @@
   overflow: hidden;
 }
 
-.chatContainer h1 {
+.chatHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #222e35;
+  padding: 0.25rem 0.75rem 0.25rem 1.1rem;
+  flex-shrink: 0;
+}
+
+.chatHeader h1 {
   font-size: 1.05rem;
   font-weight: 500;
   color: #e9edef;
-  padding: 0.9rem 1.1rem;
-  border-bottom: 1px solid #222e35;
-  flex-shrink: 0;
+  margin: 0;
+  border: none;
+  padding: 0.65rem 0;
 }
 
 .chattingDisplay {
