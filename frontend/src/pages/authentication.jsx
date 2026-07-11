@@ -2,8 +2,6 @@ import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../App.css";
 import CloseIcon from "@mui/icons-material/Close";
-import GoogleIcon from "@mui/icons-material/Google";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { AuthContext } from "../contexts/AuthContext";
 
 // REPLACE THIS CLIENT ID WITH YOUR ACTUAL GOOGLE DEVELOPER CONSOLE CLIENT ID
@@ -58,7 +56,7 @@ export default function Authentication() {
 
       google.accounts.id.renderButton(
         document.getElementById("google-login-btn"),
-        { theme: "outline", size: "large", width: "100%", text: "signin_with" }
+        { theme: "outline", size: "large", text: "signin_with", shape: "pill", width: "340", logo_alignment: "left" }
       );
     } else {
       const interval = setInterval(() => {
@@ -69,7 +67,7 @@ export default function Authentication() {
           });
           google.accounts.id.renderButton(
             document.getElementById("google-login-btn"),
-            { theme: "outline", size: "large", width: "100%", text: "signin_with" }
+            { theme: "outline", size: "large", text: "signin_with", shape: "pill", width: "340", logo_alignment: "left" }
           );
           clearInterval(interval);
         }
@@ -136,32 +134,30 @@ export default function Authentication() {
         <div className="authCard googleAuthCard">
           {!showUploadForm ? (
             <>
-              <div className="authIconWrapper">
-                <GoogleIcon style={{ fontSize: "2rem", color: "#00a884" }} />
-              </div>
+              <div className="cardBrandBadge">⚡ Zoomify</div>
 
-              <h1>Welcome to Zoomify</h1>
-              <p style={{ marginBlock: "0.5rem 1.5rem" }}>
-                Sign in securely using your Google account to get started
+              <h1 className="premiumAuthHeading">Sign in</h1>
+              <p className="premiumAuthSubtext">
+                Connect and collaborate instantly. Use your Google account to access Zoomify secure chats and video meetings.
               </p>
 
               {error && <p className="authError" style={{ marginBlock: "1rem" }}>⚠ {error}</p>}
 
-              <div id="google-login-btn" style={{ minHeight: "45px", marginTop: "1rem" }}></div>
+              <div className="googleBtnContainer">
+                <div id="google-login-btn"></div>
+              </div>
 
-              <div style={{ marginTop: "1.5rem", fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center" }}>
-                By signing in, you agree to our Terms and Service.
+              <div className="premiumAuthDisclaimer">
+                By signing in, you agree to our Terms of Service and Privacy Policy.
               </div>
             </>
           ) : (
             <>
-              <div className="authIconWrapper">
-                <CloudUploadIcon style={{ fontSize: "2rem", color: "#00a884" }} />
-              </div>
+              <div className="cardBrandBadge">⚡ Zoomify</div>
 
-              <h1>Set Profile Picture</h1>
-              <p style={{ marginBlock: "0.5rem 1.5rem" }}>
-                Your Google account does not have a public profile picture. Please upload a photo to continue.
+              <h1 className="premiumAuthHeading">Upload Profile Picture</h1>
+              <p className="premiumAuthSubtext">
+                Your Google account doesn't have a public profile image. Please choose an avatar to finalize your registration.
               </p>
 
               <form onSubmit={handleCompleteRegistration}>
@@ -182,7 +178,7 @@ export default function Authentication() {
                         </div>
                       ) : (
                         <div className="avatarPlaceholder">
-                          <span>Click to Select Profile Image</span>
+                          <span>Select Profile Image</span>
                         </div>
                       )}
                     </label>
