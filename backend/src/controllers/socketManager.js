@@ -92,8 +92,31 @@ export const connectToSocket = (server) => {
             socket.username = username; // Store on socket object to track on disconnect
             console.log(`[Socket] User ${username} joined their DM lobby`);
             try {
-                await User.findOneAndUpdate({ username }, { isOnline: true });
-                io.emit("user-status-change", { username, isOnline: true });
+                const user = await User.findOneAndUpdate({ username }, { isOnline: true });
+                if (user) {
+                    // Mark all messages sent to B (not from B) as delivered
+                    const convos = await Conversation.find({ participants: user._id });
+                    const convoIds = convos.map(c => c._id);
+                    await Message.updateMany(
+                        { conversationId: { $in: convoIds }, sender: { $ne: user._id }, delivered: false },
+                        { $set: { delivered: true } }
+                    );
+                    
+                    // Notify any conversational partners that user is online
+                    io.emit("user-status-change", { username, isOnline: true });
+                    
+                    // Notify senders that their messages are now delivered
+                    convos.forEach(c => {
+                        const other = c.participants.find(p => !p.equals(user._id));
+                        if (other) {
+                            User.findById(other).then(oUser => {
+                                if (oUser) {
+                                    io.to(oUser.username).emit("messages-delivered", { conversationId: c._id });
+                                }
+                            });
+                        }
+                    });
+                }
             } catch (e) {
                 console.error("Error setting online status:", e);
             }
@@ -106,11 +129,17 @@ export const connectToSocket = (server) => {
                 const recipientUser = await User.findOne({ username: recipientUsername });
 
                 if (senderUser && recipientUser) {
+                    // Check if recipient is online in their lobby room
+                    const recipientRooms = io.sockets.adapter.rooms.get(recipientUsername);
+                    const isOnline = recipientRooms && recipientRooms.size > 0;
+
                     // Create new message in database
                     const msg = new Message({
                         conversationId,
                         sender: senderUser._id,
                         text,
+                        delivered: isOnline,
+                        read: false,
                     });
                     await msg.save();
 
@@ -125,6 +154,8 @@ export const connectToSocket = (server) => {
                         conversationId,
                         text,
                         createdAt: msg.createdAt,
+                        delivered: msg.delivered,
+                        read: msg.read,
                         sender: {
                             _id: senderUser._id,
                             name: senderUser.name,
@@ -152,9 +183,17 @@ export const connectToSocket = (server) => {
                 const user = await User.findOne({ username: senderUsername });
                 if (user) {
                     await Message.updateMany(
-                        { conversationId, sender: { $ne: user._id }, read: false },
-                        { $set: { read: true } }
+                        { conversationId, sender: { $ne: user._id } },
+                        { $set: { delivered: true, read: true } }
                     );
+
+                    const convo = await Conversation.findById(conversationId).populate("participants", "username");
+                    if (convo) {
+                        const otherParticipant = convo.participants.find(p => p.username !== senderUsername);
+                        if (otherParticipant) {
+                            io.to(otherParticipant.username).emit("conversation-read-ack", { conversationId });
+                        }
+                    }
                     io.to(senderUsername).emit("conversation-read-ack", { conversationId });
                 }
             } catch (e) {

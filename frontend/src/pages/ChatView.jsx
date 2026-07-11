@@ -62,12 +62,40 @@ export default function ChatView({ convo, socket, onBack }) {
       }
     };
 
+    const handleReadAck = (data) => {
+      if (data.conversationId === convo._id) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.sender.username === currentUserUsername
+              ? { ...msg, read: true, delivered: true }
+              : msg
+          )
+        );
+      }
+    };
+
+    const handleDelivered = (data) => {
+      if (data.conversationId === convo._id) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.sender.username === currentUserUsername
+              ? { ...msg, delivered: true }
+              : msg
+          )
+        );
+      }
+    };
+
     socket.on("dm-receive", handleDmReceive);
     socket.on("dm-typing-receive", handleTypingReceive);
+    socket.on("conversation-read-ack", handleReadAck);
+    socket.on("messages-delivered", handleDelivered);
 
     return () => {
       socket.off("dm-receive", handleDmReceive);
       socket.off("dm-typing-receive", handleTypingReceive);
+      socket.off("conversation-read-ack", handleReadAck);
+      socket.off("messages-delivered", handleDelivered);
     };
   }, [socket, convo._id, otherUser.username]);
 
@@ -169,6 +197,29 @@ export default function ChatView({ convo, socket, onBack }) {
     return `last seen on ${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
   };
 
+  const renderMessageStatus = (msg) => {
+    if (msg.read) {
+      return (
+        <span className="msgStatusTick read" title="Read">
+          ✓✓
+        </span>
+      );
+    }
+    if (msg.delivered) {
+      return (
+        <span className="msgStatusTick delivered" title="Delivered">
+          ✓✓
+        </span>
+      );
+    }
+    return (
+      <span className="msgStatusTick sent" title="Sent">
+        ✓
+      </span>
+    );
+  };
+
+  // Messages List
   return (
     <div className="chatViewContainer">
       {/* Header */}
@@ -218,12 +269,15 @@ export default function ChatView({ convo, socket, onBack }) {
             >
               <div className="messageBubble">
                 <span className="messageText">{msg.text}</span>
-                <span className="messageTime">
-                  {new Date(msg.createdAt).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
+                <div className="messageMetadata">
+                  <span className="messageTime">
+                    {new Date(msg.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  {isOwn && renderMessageStatus(msg)}
+                </div>
               </div>
             </div>
           );

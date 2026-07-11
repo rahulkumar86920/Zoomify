@@ -2048,3 +2048,32 @@ input, textarea, select {
   font-weight: 600;
 }
 
+.messageMetadata {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-top: 3px;
+  align-self: flex-end;
+}
+
+.msgStatusTick {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: -1.2px;
+  margin-left: 2px;
+  user-select: none;
+}
+
+.msgStatusTick.sent {
+  color: #8696a0; /* Single grey tick */
+}
+
+.msgStatusTick.delivered {
+  color: #8696a0; /* Double grey tick */
+}
+
+.msgStatusTick.read {
+  color: #53bdeb; /* Double blue tick */
+}
+

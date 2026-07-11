@@ -14,6 +14,7 @@ const messageSchema = new Schema(
             required: true,
         },
         text: { type: String, required: true },
+        delivered: { type: Boolean, default: false },
         read: { type: Boolean, default: false },
     },
     { timestamps: true }
