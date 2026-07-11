@@ -380,7 +380,13 @@ export default function VideoMeetComponent() {
     connections[fromId].ontrack = (event) => {
       console.log(`[WebRTC] Track added from ${fromId}`);
       if (event.track && event.track.kind === "video") {
-        setAudioOnlyState(false);
+        setAudioOnlyState((prev) => {
+          if (prev) {
+            // Peer switched to video call. Automatically turn on our own camera too!
+            handleSwitchToVideo();
+          }
+          return false;
+        });
       }
       if (event.streams && event.streams[0]) {
         handleIncomingStream(event.streams[0]);
